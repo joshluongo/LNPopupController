@@ -20,7 +20,7 @@ void __LNPopupControllerOutOfWindowHierarchy()
 }
 
 static const CGFloat LNPopupBarGestureHeightPercentThreshold = 0.2;
-static const CGFloat LNPopupBarDeveloperPanGestureThreshold = 0;
+static const CGFloat LNPopupBarDeveloperPanGestureThreshold = 40;
 
 #pragma mark Popup Transition Coordinator
 
