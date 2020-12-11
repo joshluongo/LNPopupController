@@ -324,11 +324,11 @@ LNPopupCloseButtonStyle _LNPopupResolveCloseButtonStyleFromCloseButtonStyle(LNPo
 }
 
 - (CGFloat)gestureHeightPercentThreshold {
-    return _gestureHeightPercentThreshold ? _gestureHeightPercentThreshold : 0.2
+    return _gestureHeightPercentThreshold ? _gestureHeightPercentThreshold : 0.2;
 }
 
 - (CGFloat)developerPanGestureThreshold {
-    return _developerPanGestureThreshold ? _developerPanGestureThreshold : 0.0
+    return _developerPanGestureThreshold ? _developerPanGestureThreshold : 0.0;
 }
 
 @end
