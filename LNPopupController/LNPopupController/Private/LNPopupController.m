@@ -24,9 +24,6 @@
 
 const NSUInteger _LNPopupPresentationStateTransitioning = 2;
 
-static const CGFloat LNPopupBarGestureHeightPercentThreshold = 0.2;
-static const CGFloat LNPopupBarDeveloperPanGestureThreshold = 0;
-
 LNPopupInteractionStyle _LNPopupResolveInteractionStyleFromInteractionStyle(LNPopupInteractionStyle style)
 {
 	LNPopupInteractionStyle rv = style;
@@ -493,7 +490,7 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 			
 			if(([delegate respondsToSelector:@selector(gestureRecognizer:shouldRequireFailureOfGestureRecognizer:)] && [delegate gestureRecognizer:_popupContentView.popupInteractionGestureRecognizer shouldRequireFailureOfGestureRecognizer:pgr] == YES) ||
 			   ([delegate respondsToSelector:@selector(gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:)] && [delegate gestureRecognizer:_popupContentView.popupInteractionGestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:pgr] == NO) ||
-			   (_dismissGestureStarted == NO && possibleScrollView.contentOffset.y > - (possibleScrollView.contentInset.top + LNPopupBarDeveloperPanGestureThreshold)))
+			   (_dismissGestureStarted == NO && possibleScrollView.contentOffset.y > - (possibleScrollView.contentInset.top + self.popupContentView.developerPanGestureThreshold)))
 			{
 				return;
 			}
@@ -606,7 +603,7 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 		if(resolvedStyle == LNPopupInteractionStyleDrag || resolvedStyle == LNPopupInteractionStyleScroll)
 		{
 			CGFloat barTransitionPercent = [self _percentFromPopupBar];
-			BOOL hasPassedHeighThreshold = _stateBeforeDismissStarted == LNPopupPresentationStateBarPresented ? barTransitionPercent > LNPopupBarGestureHeightPercentThreshold : barTransitionPercent < (1.0 - LNPopupBarGestureHeightPercentThreshold);
+			BOOL hasPassedHeighThreshold = _stateBeforeDismissStarted == LNPopupPresentationStateBarPresented ? barTransitionPercent > self.popupContentView.gestureHeightPercentThreshold : barTransitionPercent < (1.0 - self.popupContentView.gestureHeightPercentThreshold);
 			CGFloat panVelocity = [pgr velocityInView:_containerController.view].y;
 			
 			if(panVelocity < 0)

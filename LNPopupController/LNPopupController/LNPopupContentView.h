@@ -55,6 +55,16 @@ extern const UIBlurEffectStyle LNBackgroundStyleInherit;
  */
 @property(nonatomic, assign, getter=isTranslucent) BOOL translucent UI_APPEARANCE_SELECTOR;
 
+/**
+ * The threshold to start transitioning the popup bar.
+ */
+@property (nonatomic, assign) CGFloat gestureHeightPercentThreshold;
+
+/**
+ * The threshold required to dismiss by swiping.
+ */
+@property (nonatomic, assign) CGFloat developerPanGestureThreshold;
+
 @end
 
 NS_ASSUME_NONNULL_END
