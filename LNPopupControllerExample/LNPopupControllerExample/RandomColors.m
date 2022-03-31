@@ -24,11 +24,18 @@ static void LNInitializeDemoColors(void)
 		UIColor.systemPinkColor,
 		UIColor.systemPurpleColor,
 		UIColor.systemTealColor,
+		UIColor.systemIndigoColor,
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000
+		UIColor.systemBrownColor,
+#endif
 	].mutableCopy;
-	if (@available(iOS 13.0, *))
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000
+	if(@available(iOS 15.0, *))
 	{
-		[namedSystemColors addObject:UIColor.systemIndigoColor];
+		[namedSystemColors addObject:UIColor.systemMintColor];
+		[namedSystemColors addObject:UIColor.systemCyanColor];
 	}
+#endif
 }
 
 UIColor* LNRandomSystemColor(void)
@@ -58,7 +65,6 @@ UIColor* _LNSeedLightColor(long seed)
 	return [UIColor colorWithHue:hue saturation:saturation brightness:brightness alpha:1];
 }
 
-API_AVAILABLE(ios(13.0))
 UIColor* _LNSeedAdaptiveColor(long seed)
 {
 	UIColor* light = _LNSeedLightColor(seed);
@@ -75,7 +81,6 @@ UIColor* _LNSeedAdaptiveColor(long seed)
 	}];
 }
 
-API_AVAILABLE(ios(13.0))
 UIColor* _LNSeedAdaptiveInvertedColor(long seed)
 {
 	UIColor* light = _LNSeedLightColor(seed);
@@ -92,26 +97,21 @@ UIColor* _LNSeedAdaptiveInvertedColor(long seed)
 	}];
 }
 
-
-API_AVAILABLE(ios(13.0))
 UIColor* LNRandomAdaptiveColor(void)
 {
 	return _LNSeedAdaptiveColor(arc4random());
 }
 
-API_AVAILABLE(ios(13.0))
 UIColor* LNRandomAdaptiveInvertedColor(void)
 {
 	return _LNSeedAdaptiveInvertedColor(arc4random());
 }
 
-API_AVAILABLE(ios(13.0))
 UIColor* LNSeedAdaptiveColor(NSString* seed)
 {
 	return _LNSeedAdaptiveColor(seed.hash);
 }
 
-API_AVAILABLE(ios(13.0))
 UIColor* LNSeedAdaptiveInvertedColor(NSString* seed)
 {
 	return _LNSeedAdaptiveInvertedColor(seed.hash);

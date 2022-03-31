@@ -3,19 +3,28 @@
 //  LNPopupController
 //
 //  Created by Leo Natan on 15/12/2016.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
+#import <LNPopupController/LNPopupDefinitions.h>
 
 @class LNPopupBar;
 
-@interface LNPopupCustomBarViewController : UIViewController
+NS_ASSUME_NONNULL_BEGIN
+
+/**
+ * An object that manages a custom popup bar view hierarchy.
+ *
+ * Implement the @c UIPointerInteractionDelegate methods to customize pointer interactions.
+ */
+NS_SWIFT_UI_ACTOR
+@interface LNPopupCustomBarViewController : UIViewController <UIPointerInteractionDelegate>
 
 /**
  * The containing popup bar. (read-only)
  */
-@property (nonatomic, weak, readonly) LNPopupBar* containingPopupBar;
+@property (nonatomic, weak, readonly, nullable) LNPopupBar* containingPopupBar;
 
 /**
  * Indicates whether the default tap gesture recognizer should be added to the popup bar.
@@ -43,13 +52,23 @@
  */
 @property (nonatomic, assign) CGSize preferredContentSize;
 
-- (void)viewDidLoad NS_REQUIRES_SUPER; // Called after the view has been loaded. For view controllers created in code, this is after -loadView. For view controllers unarchived from a nib, this is after the view is set.
+/**
+ * Called after the view has been loaded. For view controllers created in code, this is after @c loadView(). For view controllers unarchived from a nib, this is after the view is set.
+ 
+ * @note You must call the @c super implementation of this method.
+ */
+- (void)viewDidLoad NS_REQUIRES_SUPER;
 
 /**
  * Called by the framework to notify the popup bar content view controller that one or more keys of the the popup item have been updated, or the entire popup item has changed.
- *
- * @note You must call the @c super implementation of this method.
  */
-- (void)popupItemDidUpdate NS_REQUIRES_SUPER;
+- (void)popupItemDidUpdate;
+
+/**
+ * Called by the framework to notify the popup bar content view controller that the active appearance has changed. The provided @c activeAppearance object contains a merged appearance from the popup item, the system appearance and popup bar appearance, as appropriate.
+ */
+- (void)activeAppearanceDidChange:(LNPopupBarAppearance*)activeAppearance;
 
 @end
+
+NS_ASSUME_NONNULL_END

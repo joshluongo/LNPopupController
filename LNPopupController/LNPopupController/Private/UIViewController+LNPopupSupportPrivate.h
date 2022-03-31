@@ -3,10 +3,11 @@
 //  LNPopupController
 //
 //  Created by Leo Natan on 7/25/15.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import <LNPopupController/UIViewController+LNPopupSupport.h>
+#import "_LNPopupBarBackgroundView.h"
 
 @class LNPopupController;
 
@@ -28,12 +29,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 
 @interface _LNPopupBottomBarSupport : UIView @end
 
-@interface _LNPopupBarExtensionView : UIView
-
-@property (nonatomic, strong, readonly) UIVisualEffectView *effectView;
-
-@end
-
 @interface UIViewController (LNPopupSupportPrivate)
 
 - (void)_ln_setPopupPresentationState:(LNPopupPresentationState)newState;
@@ -51,9 +46,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 
 - (BOOL)_isContainedInPopupController;
 - (BOOL)_isContainedInPopupControllerOrDeallocated;
-- (BOOL)_ln_isInPopupAppearanceTransition;
-- (void)_ln_beginAppearanceTransition:(BOOL)isAppearing animated:(BOOL)animated;
-- (void)_ln_endAppearanceTransition;
 
 - (BOOL)_ignoringLayoutDuringTransition;
 
@@ -63,8 +55,13 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 - (CGRect)defaultFrameForBottomDockingView_internal;
 - (CGRect)defaultFrameForBottomDockingView_internalOrDeveloper;
 
-- (_LNPopupBarExtensionView*)_ln_bottomBarExtension_nocreate;
-- (_LNPopupBarExtensionView*)_ln_bottomBarExtension;
+- (_LNPopupBarBackgroundView*)_ln_bottomBarExtension_nocreate;
+- (_LNPopupBarBackgroundView*)_ln_bottomBarExtension;
+
+- (void)_userFacing_viewWillAppear:(BOOL)animated;
+- (void)_userFacing_viewDidAppear:(BOOL)animated;
+- (void)_userFacing_viewWillDisappear:(BOOL)animated;
+- (void)_userFacing_viewDidDisappear:(BOOL)animated;
 
 @end
 

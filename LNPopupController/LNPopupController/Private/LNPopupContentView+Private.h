@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Leo Natan on 8/4/20.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import <LNPopupController/LNPopupContentView.h>
@@ -19,11 +19,12 @@
 
 @property (nonatomic, weak) UIViewController* currentPopupContentViewController;
 
-- (void)setControllerOverrideUserInterfaceStyle:(UIUserInterfaceStyle)overrideUserInterfaceStyle API_AVAILABLE(ios(13.0));
+- (void)setControllerOverrideUserInterfaceStyle:(UIUserInterfaceStyle)overrideUserInterfaceStyle;
 
 - (void)_applyBackgroundEffectWithContentViewController:(UIViewController*)vc barEffect:(UIBlurEffect*)barEffect;
 
 - (void)_repositionPopupCloseButton;
+- (void)_repositionPopupCloseButtonAnimated:(BOOL)animated;
 
 @end
 

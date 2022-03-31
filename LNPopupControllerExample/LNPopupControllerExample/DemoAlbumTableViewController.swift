@@ -12,7 +12,6 @@ import LNPopupController
 #endif
 import LoremIpsum
 
-@available(iOS 13.0, *)
 class DemoAlbumTableViewController: UITableViewController {
 
 	@IBOutlet var demoAlbumImageView: UIImageView!
@@ -34,12 +33,39 @@ class DemoAlbumTableViewController: UITableViewController {
 		
         super.viewDidLoad()
 		
+		let backgroundImageView = UIImageView(image: UIImage(named: "demoAlbum"))
+		backgroundImageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+		backgroundImageView.contentMode = .scaleAspectFill
+		let backgroundEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+		backgroundEffectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+		let container = UIView(frame: tableView.bounds)
+		container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+		backgroundImageView.frame = container.bounds
+		backgroundEffectView.frame = container.bounds
+		container.addSubview(backgroundImageView)
+		container.addSubview(backgroundEffectView)
+		
+		tableView.backgroundView = container
+		
+		tableView.separatorEffect = UIVibrancyEffect(blurEffect: UIBlurEffect(style: .systemThinMaterial))
+		
 #if LNPOPUP
-		tabBarController?.popupBar.barStyle = LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle)  as? UInt ?? 0)!
+		tabBarController?.popupBar.barStyle = LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle)  as? Int ?? 0)!
 #endif
+
 		let appearance = UINavigationBarAppearance()
 		appearance.configureWithTransparentBackground()
-		navigationItem.standardAppearance = appearance
+#if compiler(>=5.5)
+		if #available(iOS 15.0, *) {
+			navigationItem.compactScrollEdgeAppearance = appearance
+		}
+#endif
+		navigationItem.scrollEdgeAppearance = appearance
+		
+		let appearance2 = UINavigationBarAppearance()
+		appearance2.configureWithDefaultBackground()
+		navigationItem.compactAppearance = appearance2
+		navigationItem.standardAppearance = appearance2
 
 		demoAlbumImageView.layer.cornerCurve = .continuous
 		demoAlbumImageView.layer.cornerRadius = 8
@@ -51,17 +77,6 @@ class DemoAlbumTableViewController: UITableViewController {
 			subtitles += [LoremIpsum.sentence]
 		}
     }
-	
-	override func scrollViewDidScroll(_ scrollView: UIScrollView) {
-		let appearance = UINavigationBarAppearance()
-		
-		if scrollView.contentOffset.y > -scrollView.adjustedContentInset.top {
-			appearance.configureWithDefaultBackground()
-		} else {
-			appearance.configureWithTransparentBackground()
-		}
-		navigationItem.standardAppearance = appearance
-	}
 	
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1

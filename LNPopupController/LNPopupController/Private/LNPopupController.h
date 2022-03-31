@@ -1,9 +1,9 @@
 //
-//  _LNPopupBarSupportObject.h
+//  LNPopupController.h
 //  LNPopupController
 //
 //  Created by Leo Natan on 7/24/15.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -42,6 +42,7 @@ extern const NSUInteger _LNPopupPresentationStateTransitioning;
 - (CGFloat)_percentFromPopupBar;
 
 - (void)_setContentToState:(LNPopupPresentationState)state;
+- (void)_setContentToState:(LNPopupPresentationState)state animated:(BOOL)animated;
 
 - (void)_movePopupBarAndContentToBottomBarSuperview;
 

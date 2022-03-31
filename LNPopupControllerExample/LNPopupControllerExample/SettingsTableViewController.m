@@ -8,6 +8,8 @@
 
 #import "SettingsTableViewController.h"
 
+@import LNTouchVisualizer;
+
 NSString* const PopupSettingsBarStyle = @"PopupSettingsBarStyle";
 NSString* const PopupSettingsInteractionStyle = @"PopupSettingsInteractionStyle";
 NSString* const PopupSettingsProgressViewStyle = @"PopupSettingsProgressViewStyle";
@@ -15,7 +17,9 @@ NSString* const PopupSettingsCloseButtonStyle = @"PopupSettingsCloseButtonStyle"
 NSString* const PopupSettingsMarqueeStyle = @"PopupSettingsMarqueeStyle";
 NSString* const PopupSettingsEnableCustomizations = @"PopupSettingsEnableCustomizations";
 NSString* const PopupSettingsExtendBar = @"PopupSettingsExtendBar";
+NSString* const PopupSettingsHidesBottomBarWhenPushed = @"PopupSettingsHidesBottomBarWhenPushed";
 NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualEffectViewBlurEffect";
+NSString* const PopupSettingsTouchVisualizerEnabled = @"PopupSettingsTouchVisualizerEnabled";
 
 @interface SettingsTableViewController ()
 {
@@ -23,6 +27,8 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 	
 	IBOutlet UISwitch* _customizations;
 	IBOutlet UISwitch* _extendBars;
+	IBOutlet UISwitch* _hidesBottomBarWhenPushed;
+	IBOutlet UISwitch* _touchVisualizer;
 }
 
 @end
@@ -31,10 +37,11 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 
 + (void)load
 {
-	[NSUserDefaults.standardUserDefaults registerDefaults:@{PopupSettingsExtendBar: @YES}];
+	[NSUserDefaults.standardUserDefaults registerDefaults:@{PopupSettingsExtendBar: @YES, PopupSettingsHidesBottomBarWhenPushed: @YES}];
 }
 
-- (void)viewDidLoad {
+- (void)viewDidLoad
+{
     [super viewDidLoad];
 	
 	_sectionToKeyMapping = @{
@@ -49,14 +56,15 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 		@8: PopupSettingsVisualEffectViewBlurEffect,
 	};
 	
-	_customizations.on = [NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsEnableCustomizations];
-	_extendBars.on = [NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsExtendBar];
+	[self _resetSwitchesAnimated:NO];
 }
 
-- (void)didReceiveMemoryWarning
+- (void)_resetSwitchesAnimated:(BOOL)animated
 {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+	[_customizations setOn:[NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsEnableCustomizations] animated:animated];
+	[_extendBars setOn:[NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsExtendBar] animated:animated];
+	[_hidesBottomBarWhenPushed setOn:[NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsHidesBottomBarWhenPushed] animated:animated];
+	[_touchVisualizer setOn:[NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsTouchVisualizerEnabled] animated:animated];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -80,10 +88,11 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 		}
 		else
 		{
+			NSUInteger lastIdxInSection = [tableView numberOfRowsInSection:indexPath.section] - 1;
 			NSUInteger value = [[NSUserDefaults.standardUserDefaults objectForKey:key] unsignedIntegerValue];
 			if(value == 0xFFFF)
 			{
-				value = 3;
+				value = lastIdxInSection;
 			}
 			
 			if(indexPath.row == value)
@@ -96,9 +105,14 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 	return cell;
 }
 
-- (IBAction)_resetButtonTapped:(UIBarButtonItem *)sender {
+- (IBAction)_resetButtonTapped:(UIBarButtonItem *)sender
+{
 	[NSUserDefaults.standardUserDefaults setBool:NO forKey:PopupSettingsEnableCustomizations];
 	[NSUserDefaults.standardUserDefaults setBool:YES forKey:PopupSettingsExtendBar];
+	[NSUserDefaults.standardUserDefaults setBool:YES forKey:PopupSettingsHidesBottomBarWhenPushed];
+	[NSUserDefaults.standardUserDefaults setBool:NO forKey:PopupSettingsTouchVisualizerEnabled];
+	self.view.window.windowScene.touchVisualizerEnabled = [NSUserDefaults.standardUserDefaults boolForKey:PopupSettingsTouchVisualizerEnabled];
+	
 	[NSUserDefaults.standardUserDefaults removeObjectForKey:PopupSettingsVisualEffectViewBlurEffect];
 	
 	[_sectionToKeyMapping enumerateKeysAndObjectsUsingBlock:^(NSNumber * _Nonnull key, NSString * _Nonnull obj, BOOL * _Nonnull stop) {
@@ -109,6 +123,8 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 		
 		[NSUserDefaults.standardUserDefaults setObject:@0 forKey:obj];
 	}];
+	
+	[self _resetSwitchesAnimated:YES];
 	
 	[self.tableView reloadData];
 }
@@ -121,6 +137,17 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 - (IBAction)_extendBarsSwitchValueDidChange:(UISwitch*)sender
 {
 	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:PopupSettingsExtendBar];
+}
+
+- (IBAction)_hidesBottomBarWhenPushedValueDidChange:(UISwitch*)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:PopupSettingsHidesBottomBarWhenPushed];
+}
+
+- (IBAction)_touchVisualizerEnabledDidChange:(UISwitch*)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:PopupSettingsTouchVisualizerEnabled];
+	self.view.window.windowScene.touchVisualizerEnabled = sender.isOn;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
@@ -154,17 +181,18 @@ NSString* const PopupSettingsVisualEffectViewBlurEffect = @"PopupSettingsVisualE
 	}
 	else
 	{
+		NSUInteger lastIdxInSection = [tableView numberOfRowsInSection:indexPath.section] - 1;
 		NSUInteger prevValue = [[NSUserDefaults.standardUserDefaults objectForKey:key] unsignedIntegerValue];
 		if(prevValue == 0xFFFF)
 		{
-			prevValue = 3;
+			prevValue = lastIdxInSection;
 		}
 		
 		[tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:prevValue inSection:indexPath.section]].accessoryType = UITableViewCellAccessoryNone;
 		[tableView cellForRowAtIndexPath:indexPath].accessoryType = UITableViewCellAccessoryCheckmark;
 		
 		NSUInteger value = indexPath.row;
-		if(value == 3)
+		if(value == lastIdxInSection)
 		{
 			value = 0xFFFF;
 		}

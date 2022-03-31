@@ -11,19 +11,12 @@
 #if LNPOPUP
 @import LNPopupController;
 #import "IntroWebViewController.h"
+#import "LNPopupDemoContextMenuInteraction.h"
 #endif
 
-@interface DemoGalleryControllerTableView : UITableView @end
-@implementation DemoGalleryControllerTableView
-
-- (BOOL)canBecomeFocused
-{
-	return NO;
-}
-
+@interface DemoGalleryController : UITableViewController
 @end
 
-@interface DemoGalleryController : UITableViewController @end
 @implementation DemoGalleryController
 {
 #if LNPOPUP
@@ -40,14 +33,9 @@
 #if LNPOPUP
 	_demoVC = [IntroWebViewController new];
 	
-	self.navigationController.popupBar.marqueeScrollEnabled = YES;
-#if ! TARGET_OS_MACCATALYST
-	self.navigationController.popupContentView.popupCloseButtonStyle = LNPopupCloseButtonStyleNone;
-#endif
-	if (@available(iOS 13.0, *))
-	{
-		self.navigationController.popupContentView.popupCloseButton.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
-	}
+	self.navigationController.popupBar.standardAppearance.marqueeScrollDelay = 0.0;
+	self.navigationController.popupBar.standardAppearance.marqueeScrollEnabled = YES;
+	self.navigationController.popupContentView.popupCloseButton.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
 #endif
 }
 
@@ -58,6 +46,8 @@
 #if LNPOPUP
 	self.navigationController.view.tintColor = self.navigationController.navigationBar.tintColor;
 	[self.navigationController presentPopupBarWithContentViewController:_demoVC animated:YES completion:nil];
+	
+	[self.navigationController.popupBar addInteraction:[LNPopupDemoContextMenuInteraction new]];
 #endif
 }
 

@@ -2,13 +2,12 @@
 //  ColorfulButton.swift
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan (Wix) on 9/4/20.
-//  Copyright © 2020 Leo Natan. All rights reserved.
+//  Created by Leo Natan on 9/4/20.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 import UIKit
 
-@available(iOS 13.0, *)
 @IBDesignable
 class ColorfulButton: UIButton {
 	fileprivate func resetBackgroundColor() {

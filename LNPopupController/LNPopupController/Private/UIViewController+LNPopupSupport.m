@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Leo Natan on 7/24/15.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import "UIViewController+LNPopupSupportPrivate.h"
@@ -12,6 +12,7 @@
 #import "UIViewController+LNPopupSupportPrivate.h"
 #import "UIView+LNPopupSupportPrivate.h"
 #import "_LNPopupSwizzlingUtils.h"
+#import "LNMath.h"
 @import ObjectiveC;
 
 static const void* _LNPopupItemKey = &_LNPopupItemKey;
@@ -19,9 +20,11 @@ static const void* _LNPopupControllerKey = &_LNPopupControllerKey;
 const void* _LNPopupPresentationContainerViewControllerKey = &_LNPopupPresentationContainerViewControllerKey;
 const void* _LNPopupContentViewControllerKey = &_LNPopupContentViewControllerKey;
 static const void* _LNPopupInteractionStyleKey = &_LNPopupInteractionStyleKey;
+static const void* _LNPopupInteractionSnapPercentKey = &_LNPopupInteractionSnapPercentKey;
 static const void* _LNPopupBottomBarSupportKey = &_LNPopupBottomBarSupportKey;
-static const void* _LNPopupIsInPopupAppearanceTransitionKey = &_LNPopupIsInPopupAppearanceTransitionKey;
 static const void* _LNPopupShouldExtendUnderSafeAreaKey = &_LNPopupShouldExtendUnderSafeAreaKey;
+
+const double LNSnapPercentDefault = 0.32;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wincomplete-implementation"
@@ -42,10 +45,8 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 - (UIPresentationController*)nonMemoryLeakingPresentationController
 {
 #if ! LNPopupControllerEnforceStrictClean
-	//TODO: Hide
-
 	static NSString* sel = nil;
-	static id (*nonLeakingPresentationController)(id, SEL, BOOL, BOOL) = (void*)objc_msgSend;
+	static id (*nonLeakingPresentationController)(id, SEL, BOOL, BOOL) = (id(*)(id, SEL, BOOL, BOOL))objc_msgSend;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
 		sel = _LNPopupDecodeBase64String(ePCIEBase64);
@@ -164,6 +165,11 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 
 - (void)updatePopupBarAppearance
 {
+	[self setNeedsPopupBarAppearanceUpdate];
+}
+
+- (void)setNeedsPopupBarAppearanceUpdate
+{
 	[self._ln_popupController_nocreate _configurePopupBarFromBottomBar];
 }
 
@@ -258,12 +264,29 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 
 - (LNPopupInteractionStyle)popupInteractionStyle
 {
-	return [objc_getAssociatedObject(self, _LNPopupInteractionStyleKey) unsignedIntegerValue];
+	return (LNPopupInteractionStyle)[objc_getAssociatedObject(self, _LNPopupInteractionStyleKey) unsignedIntegerValue];
 }
 
 - (void)setPopupInteractionStyle:(LNPopupInteractionStyle)popupInteractionStyle
 {
 	objc_setAssociatedObject(self, _LNPopupInteractionStyleKey, @(popupInteractionStyle), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (double)popupSnapPercent
+{
+	NSNumber* rv = objc_getAssociatedObject(self, _LNPopupInteractionSnapPercentKey);
+	
+	if(rv == nil)
+	{
+		return LNSnapPercentDefault;
+	}
+	
+	return [rv doubleValue];
+}
+
+- (void)setPopupSnapPercent:(double)popupDragPercent
+{
+	objc_setAssociatedObject(self, _LNPopupInteractionSnapPercentKey, @(_ln_clamp(popupDragPercent, 0.1, 0.9)), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (LNPopupController*)_ln_popupController_nocreate
@@ -274,25 +297,6 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 - (__kindof UIView *)viewForPopupInteractionGestureRecognizer
 {
 	return self.view;
-}
-
-- (BOOL)_ln_isInPopupAppearanceTransition
-{
-	return [objc_getAssociatedObject(self, _LNPopupIsInPopupAppearanceTransitionKey) boolValue];
-}
-
-- (void)_ln_beginAppearanceTransition:(BOOL)isAppearing animated:(BOOL)animated
-{
-	objc_setAssociatedObject(self, _LNPopupIsInPopupAppearanceTransitionKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-	
-	[self beginAppearanceTransition:isAppearing animated:animated];
-}
-
-- (void)_ln_endAppearanceTransition
-{
-	[self endAppearanceTransition];
-	
-	objc_setAssociatedObject(self, _LNPopupIsInPopupAppearanceTransitionKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 @end

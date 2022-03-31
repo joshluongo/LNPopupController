@@ -3,10 +3,13 @@
 //  LNPopupController
 //
 //  Created by Leo Natan on 7/25/15.
-//  Copyright © 2015-2020 Leo Natan. All rights reserved.
+//  Copyright © 2015-2021 Leo Natan. All rights reserved.
 //
 
 #import <LNPopupController/LNPopupBar.h>
+#import "LNPopupBarAppearanceChainProxy.h"
+#import "LNPopupBarAppearance+Private.h"
+#import "_LNPopupBarBackgroundView.h"
 
 extern const CGFloat LNPopupBarHeightCompact;
 extern const CGFloat LNPopupBarHeightProminent;
@@ -34,34 +37,41 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 - (void)_popupBarMetricsDidChange:(LNPopupBar*)bar;
 - (void)_popupBarStyleDidChange:(LNPopupBar*)bar;
 - (void)_popupBar:(LNPopupBar*)bar updateCustomBarController:(LNPopupCustomBarViewController*)customController cleanup:(BOOL)cleanup;
+- (void)_removeInteractionGestureForPopupBar:(LNPopupBar*)bar;
 
 @end
 
 @protocol _LNPopupBarSupport <NSObject>
 
-@property (nonatomic, assign) UIBarStyle barStyle;
-@property (nonatomic, strong) UIColor* barTintColor;
-@property (nonatomic, assign, getter=isTranslucent) BOOL translucent;
-@property (nonatomic, strong) UIBarAppearance* standardAppearance API_AVAILABLE(ios(13.0));
+@property (nonatomic, strong) UIColor *barTintColor;
+@property (nonatomic, strong) UIBarAppearance* standardAppearance;
 
 @end
 
-@interface LNPopupBar ()
+@interface LNPopupBar () <UIPointerInteractionDelegate, _LNPopupBarAppearanceDelegate>
 
-@property (nonatomic, assign) UIBarStyle systemBarStyle;
++ (void)setAnimatesItemSetter:(BOOL)animate;
+
 @property (nonatomic, strong) UIColor* systemTintColor;
-@property (nonatomic, strong) UIColor* systemBarTintColor;
 @property (nonatomic, strong) UIColor* systemBackgroundColor;
-@property (nonatomic, strong) UIColor* systemShadowColor;
+@property (nonatomic, strong) UIBarAppearance* systemAppearance;
+@property (nonatomic, readonly, strong) LNPopupBarAppearance* activeAppearance;
+@property (nonatomic, readonly, strong) LNPopupBarAppearanceChainProxy* activeAppearanceChain;
 
+- (void)_recalcActiveAppearanceChain;
+
+@property (nonatomic, strong) UIView* shadowView;
 @property (nonatomic, strong) UIView* bottomShadowView;
 
 @property (nonatomic, weak, readwrite) LNPopupItem* popupItem;
 
 @property (nonatomic, weak) id<_LNPopupBarDelegate> _barDelegate;
 
-@property (nonatomic, copy) NSString* title;
-@property (nonatomic, copy) NSString* subtitle;
+@property (nonatomic, copy) NSAttributedString* attributedTitle;
+@property (nonatomic, copy) NSAttributedString* attributedSubtitle;
+
+@property (nonatomic, strong) UIViewController* swiftuiTitleController;
+@property (nonatomic, strong) UIViewController* swiftuiSubtitleController;
 
 @property (nonatomic, strong) UIImage* image;
 @property (nonatomic, strong) UIViewController* swiftuiImageController;
@@ -72,8 +82,9 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 @property (nonatomic, strong, readwrite) UIProgressView* progressView;
 
 @property (nonatomic, strong) UIView* contentView;
-//@property (nonatomic, strong) UIToolbar* toolbar;
-@property (nonatomic, strong) UIVisualEffectView* backgroundView;
+@property (nonatomic, strong) _LNPopupBarBackgroundView* backgroundView;
+@property (nonatomic, strong) UIVisualEffectView* interactionBackgroundView;
+
 @property (nonatomic, strong) NSString* effectGroupingIdentifier;
 - (void)_applyGroupingIdentifierToVisualEffectView:(UIVisualEffectView*)visualEffectView;
 
@@ -88,6 +99,7 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 @property (nonatomic, strong, readwrite) UITapGestureRecognizer* popupOpenGestureRecognizer;
 @property (nonatomic, strong, readwrite) UILongPressGestureRecognizer* barHighlightGestureRecognizer;
+- (void)_cancelGestureRecognizers;
 
 @property (nonatomic) BOOL _applySwiftUILayoutFixes;
 
@@ -96,9 +108,9 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 - (void)_setTitleViewMarqueesPaused:(BOOL)paused;
 
-- (void)_removeAnimationFromBarItems;
-
 - (void)_transitionCustomBarViewControllerWithPopupContainerSize:(CGSize)size withCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator;
 - (void)_transitionCustomBarViewControllerWithPopupContainerTraitCollection:(UITraitCollection *)newCollection withCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator;
+
+- (void)_cancelAnyUserInteraction;
 
 @end

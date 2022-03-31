@@ -46,8 +46,24 @@ class CustomMapBarViewController: LNPopupCustomBarViewController {
 		updateConstraint()
 	}
 	
+	override func viewWillAppear(_ animated: Bool) {
+		super.viewWillAppear(animated)
+	}
+	
+	override func viewDidAppear(_ animated: Bool) {
+		super.viewDidAppear(animated)
+	}
+	
+	override func viewWillDisappear(_ animated: Bool) {
+		super.viewWillDisappear(animated)
+	}
+	
+	override func viewDidDisappear(_ animated: Bool) {
+		super.viewDidDisappear(animated)
+	}
+	
 	override func popupItemDidUpdate() {
-		searchBar.text = containingPopupBar.popupItem?.title
+		searchBar.text = popupItem.title
 	}
 	
 	override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {

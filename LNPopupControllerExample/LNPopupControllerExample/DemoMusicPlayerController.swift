@@ -11,7 +11,6 @@ import UIKit
 import SwiftUI
 import LNPopupController
 
-@available(iOS 13.0, *)
 fileprivate struct BlurView: UIViewRepresentable {
 	var style: UIBlurEffect.Style = .systemMaterial
 	func makeUIView(context: Context) -> UIVisualEffectView {
@@ -24,7 +23,6 @@ fileprivate struct BlurView: UIViewRepresentable {
 	}
 }
 
-@available(iOS 13.0, *)
 class PlaybackSettings: ObservableObject {
 	@Published var songTitle: String = ""
 	@Published var albumTitle: String = ""
@@ -36,7 +34,6 @@ class PlaybackSettings: ObservableObject {
 	@Published var isPlaying: Bool = true
 }
 
-@available(iOS 13.0, *)
 struct PlayerView: View {
 	@ObservedObject var playbackSettings = PlaybackSettings()
 	
@@ -140,7 +137,6 @@ struct PlayerView: View {
 	}
 }
 
-@available(iOS 13.0, *)
 class DemoMusicPlayerController: UIHostingController<PlayerView> {
 	let accessibilityDateComponentsFormatter = DateComponentsFormatter()
 	var timer : Timer?
@@ -165,7 +161,7 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 	
 	fileprivate func LNSystemImage(named: String) -> UIImage {
 		let config : UIImage.SymbolConfiguration
-		if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? UInt ?? 0)! == LNPopupBarStyle.compact {
+		if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? Int ?? 0)! == LNPopupBarStyle.compact {
 			config = UIImage.SymbolConfiguration(scale: .unspecified)
 		} else {
 			config = UIImage.SymbolConfiguration(weight: .bold)
@@ -184,7 +180,7 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 		let next = UIBarButtonItem(image: LNSystemImage(named: "forward.fill"), style: .plain, target: nil, action: nil)
 		next.accessibilityLabel = NSLocalizedString("Next Track", comment: "")
 		
-		if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? UInt ?? 0)! == LNPopupBarStyle.compact {
+		if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? Int ?? 0)! == LNPopupBarStyle.compact {
 			popupItem.leadingBarButtonItems = [ pause ]
 			popupItem.trailingBarButtonItems = [ next ]
 		} else {
@@ -229,7 +225,7 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 	
 	var albumTitle: String = "" {
 		didSet {
-			if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? UInt ?? 0)! == .compact {
+			if LNPopupBarStyle(rawValue: UserDefaults.standard.object(forKey: PopupSettingsBarStyle) as? Int ?? 0)! == .compact {
 				popupItem.subtitle = albumTitle
 			}
 			playerView.playbackSettings.albumTitle = albumTitle
