@@ -390,4 +390,27 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 	objc_setAssociatedObject(self, _LNPopupShouldExtendUnderSafeAreaKey, @(shouldExtendPopupBarUnderSafeArea), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+- (BOOL)shouldFadePopupBarOnDismiss
+{
+	return (self._ln_bottomBarExtension_nocreate.isHidden == NO && self._ln_bottomBarExtension_nocreate.alpha > 0) || [self.ln_popupController.bottomBar _ln_scrollEdgeAppearanceRequiresFadeForPopupBar:self.popupBar];
+}
+
+@end
+
+@implementation UINavigationController (LNPopupSupport)
+
+- (BOOL)positionPopupCloseButton:(LNPopupCloseButton*)popupCloseButton
+{
+	return [self.topViewController positionPopupCloseButton:popupCloseButton];
+}
+
+@end
+
+@implementation UITabBarController (LNPopupSupport)
+
+- (BOOL)positionPopupCloseButton:(LNPopupCloseButton*)popupCloseButton
+{
+	return [self.selectedViewController positionPopupCloseButton:popupCloseButton];
+}
+
 @end

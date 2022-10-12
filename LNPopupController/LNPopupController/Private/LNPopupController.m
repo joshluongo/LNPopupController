@@ -867,6 +867,16 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 	}
 }
 
+- (void)_reconfigure_swiftuiHiddenLeadingController
+{
+	self.popupBarStorage.swiftuiHiddenLeadingController = _currentPopupItem.swiftuiHiddenLeadingController;
+}
+
+- (void)_reconfigure_swiftuiHiddenTrailingController
+{
+	self.popupBarStorage.swiftuiHiddenTrailingController = _currentPopupItem.swiftuiHiddenTrailingController;
+}
+
 - (void)_reconfigure_standardAppearance
 {
 	[self.popupBarStorage _recalcActiveAppearanceChain];
@@ -1208,6 +1218,8 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 				}
 			}
 			
+			self.popupBar.acceptsSizing = YES;
+			
 			if(completionBlock != nil && !open)
 			{
 				completionBlock();
@@ -1287,6 +1299,8 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 	
 	if(_popupControllerInternalState != LNPopupPresentationStateBarHidden)
 	{
+		self.popupBar.acceptsSizing = NO;
+		
 		void (^dismissalAnimationCompletionBlock)(void) = ^
 		{
 			_popupControllerInternalState = _LNPopupPresentationStateTransitioning;
@@ -1304,11 +1318,17 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 				_LNPopupSupportSetPopupInsetsForViewController(_containerController, YES, UIEdgeInsetsZero);
 				
 				[_bottomBar _ln_triggerScrollEdgeAppearanceRefreshIfNeeded];
-				[UIView animateKeyframesWithDuration:1.0 delay:0.0 options:UIViewKeyframeAnimationOptionCalculationModeCubic animations:^{
-					[UIView addKeyframeWithRelativeStartTime:0.3 relativeDuration:0.6 animations:^{
-						_containerController._ln_bottomBarExtension_nocreate.alpha = 0.0;
-					}];
-				} completion:nil];
+				
+				CGFloat currentBarAlpha = self.popupBarStorage.alpha;
+				[UIView animateWithDuration:0.5 delay:0.0 usingSpringWithDamping:500 initialSpringVelocity:0 options:UIViewAnimationOptionAllowAnimatedContent animations:^{					
+					if(_containerController.shouldFadePopupBarOnDismiss)
+					{
+						self.popupBar.alpha = 0.0;
+					}
+					_containerController._ln_bottomBarExtension_nocreate.alpha = 0.0;
+				} completion:^(BOOL finished) {
+					self.popupBarStorage.alpha = currentBarAlpha;
+				}];
 			} completion:^(BOOL finished) {
 				self.popupBar.shadowView.alpha = 1.0;
 				
@@ -1322,7 +1342,7 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 				bottomBarFrame.origin.y -= _cachedInsets.bottom;
 				_bottomBar.frame = bottomBarFrame;
 				
-				self.popupBarStorage.hidden = YES;
+				self.popupBar.hidden = YES;
 				[self.popupBar removeFromSuperview];
 				
 				[self.popupContentView removeFromSuperview];
@@ -1391,6 +1411,12 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 
 - (void)_popupBarMetricsDidChange:(LNPopupBar*)bar
 {
+	if(self.popupBar.acceptsSizing == NO)
+	{
+		//Ignore frame changes before a bar is fully presented.
+		return;
+	}
+	
 	CGRect barFrame = self.popupBar.frame;
 	CGFloat currentHeight = barFrame.size.height;
 	barFrame.size.height = _LNPopupBarHeightForBarStyle(_LNPopupResolveBarStyleFromBarStyle(self.popupBar.barStyle), self.popupBar.customBarViewController);

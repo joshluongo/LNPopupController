@@ -40,6 +40,8 @@ static NSString* const hSNBDSfcBase64 = @"X2hpZGVTaG93TmF2aWdhdGlvbkJhckRpZFN0b3
 static NSString* const vSAIFSBase64 = @"X3ZpZXdTYWZlQXJlYUluc2V0c0Zyb21TY2VuZQ==";
 //_updateLayoutForStatusBarAndInterfaceOrientation
 static NSString* const uLFSBAIO = @"X3VwZGF0ZUxheW91dEZvclN0YXR1c0JhckFuZEludGVyZmFjZU9yaWVudGF0aW9u";
+//_updateContentOverlayInsetsFromParentIfNecessary
+static NSString* const uCOIFPIN = @"X3VwZGF0ZUNvbnRlbnRPdmVybGF5SW5zZXRzRnJvbVBhcmVudElmTmVjZXNzYXJ5";
 //_accessibilitySpeakThisViewController
 static NSString* const aSTVC = @"X2FjY2Vzc2liaWxpdHlTcGVha1RoaXNWaWV3Q29udHJvbGxlcg==";
 //setParentViewController:
@@ -52,6 +54,13 @@ static NSString* const uiNVCA = @"VUlOYXZpZ2F0aW9uQ29udHJvbGxlckFjY2Vzc2liaWxpdH
 static NSString* const uiTBCA = @"VUlUYWJCYXJDb250cm9sbGVyQWNjZXNzaWJpbGl0eQ==";
 //_prepareTabBar
 static NSString* const pTBBase64 = @"X3ByZXBhcmVUYWJCYXI=";
+
+//_setContentOverlayInsets:andLeftMargin:rightMargin:
+static NSString* const sCOIaLMrM = @"X3NldENvbnRlbnRPdmVybGF5SW5zZXRzOmFuZExlZnRNYXJnaW46cmlnaHRNYXJnaW46";
+//_contentMargin
+static NSString* const cM = @"X2NvbnRlbnRNYXJnaW4=";
+//_setContentMargin:
+static NSString* const sCM = @"X3NldENvbnRlbnRNYXJnaW46";
 
 //_accessibilitySpeakThisViewController
 static UIViewController* (*__orig_uiVCA_aSTVC)(id, SEL);
@@ -190,17 +199,30 @@ static void __accessibilityBundleLoadHandler()
 							NSSelectorFromString(selName),
 							@selector(_uLFSBAIO));
 			
+			if(@available(iOS 16.0, *))
+			{
+				//_updateContentOverlayInsetsFromParentIfNecessary
+				selName = _LNPopupDecodeBase64String(uCOIFPIN);
+				LNSwizzleMethod(self,
+								NSSelectorFromString(selName),
+								@selector(_uCOIFPIN));
+				
+				
+			}
+			else
+			{
+				//_viewSafeAreaInsetsFromScene
+				selName = _LNPopupDecodeBase64String(vSAIFSBase64);
+				LNSwizzleMethod(self,
+								NSSelectorFromString(selName),
+								@selector(_vSAIFS));
+			}
+			
 			//setParentViewController:
 			selName = _LNPopupDecodeBase64String(sPVC);
 			LNSwizzleMethod(self,
 							NSSelectorFromString(selName),
 							@selector(_ln_sPVC:));
-			
-			//_viewSafeAreaInsetsFromScene
-			selName = _LNPopupDecodeBase64String(vSAIFSBase64);
-			LNSwizzleMethod(self,
-							NSSelectorFromString(selName),
-							@selector(_vSAIFS));
 #endif
 		});
 	}
@@ -388,7 +410,7 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 	return vc;
 }
 
-- (nullable UIViewController *)_common_childviewControllersForStatusBarLogic
+- (nullable UIViewController *)_common_childViewControllersForStatusBarLogic
 {
 	UIViewController* vcToCheckForPopupPresentation = self;
 	if([self isKindOfClass:[UISplitViewController class]])
@@ -414,14 +436,14 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 
 - (nullable UIViewController *)_ln_common_childViewControllerForStatusBarHidden
 {
-	UIViewController* vc = [self _common_childviewControllersForStatusBarLogic];
+	UIViewController* vc = [self _common_childViewControllersForStatusBarLogic];
 	
 	return vc ?: [self _ln_childViewControllerForStatusBarHidden];
 }
 
 - (nullable UIViewController *)_ln_common_childViewControllerForStatusBarStyle
 {
-	UIViewController* vc = [self _common_childviewControllersForStatusBarLogic];
+	UIViewController* vc = [self _common_childViewControllersForStatusBarLogic];
 	
 	return vc ?: [self _ln_childViewControllerForStatusBarStyle];
 }
@@ -482,12 +504,47 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 	[self _common_uLFSBAIO];
 }
 
+//_updateContentOverlayInsetsFromParentIfNecessary
+- (void)_uCOIFPIN
+{
+	[self _uCOIFPIN];
+	
+	if(self.popupPresentationContainerViewController != nil)
+	{
+		static SEL contentMarginSEL;
+		static SEL setContentMarginSEL;
+		static SEL _setContentOverlayInsets_andLeftMargin_rightMarginSEL;
+		static dispatch_once_t onceToken;
+		dispatch_once(&onceToken, ^{
+			contentMarginSEL = NSSelectorFromString(_LNPopupDecodeBase64String(cM));
+			setContentMarginSEL = NSSelectorFromString(_LNPopupDecodeBase64String(sCM));
+			_setContentOverlayInsets_andLeftMargin_rightMarginSEL = NSSelectorFromString(_LNPopupDecodeBase64String(sCOIaLMrM));
+		});
+
+		CGFloat (*contentMarginFunc)(id, SEL) = (void*)objc_msgSend;
+		void (*setContentMarginFunc)(id, SEL, CGFloat) = (void*)objc_msgSend;
+		void (*_setContentOverlayInsets_andLeftMargin_rightMarginFUNC)(id, SEL, UIEdgeInsets, CGFloat, CGFloat) = (void*)objc_msgSend;
+		
+		CGFloat contentMargin = contentMarginFunc(self.popupPresentationContainerViewController, contentMarginSEL);
+		
+		UIEdgeInsets insets = __LNEdgeInsetsSum(self.popupPresentationContainerViewController.view.safeAreaInsets, UIEdgeInsetsMake(0, 0, - _LNPopupSafeAreas(self.popupPresentationContainerViewController).bottom, 0));
+		
+		_setContentOverlayInsets_andLeftMargin_rightMarginFUNC(self, _setContentOverlayInsets_andLeftMargin_rightMarginSEL, insets, contentMargin, contentMargin);
+		setContentMarginFunc(self, setContentMarginSEL, contentMargin);
+		
+		self.view.insetsLayoutMarginsFromSafeArea = YES;
+		self.viewRespectsSystemMinimumLayoutMargins = NO;
+		self.view.layoutMargins = UIEdgeInsetsMake(0, contentMargin, 0, contentMargin);
+	}
+}
+
+
 //_viewSafeAreaInsetsFromScene
 - (UIEdgeInsets)_vSAIFS
 {
 	if([self _isContainedInPopupController])
 	{
-		return __LNEdgeInsetsSum(self.popupPresentationContainerViewController.view.safeAreaInsets, UIEdgeInsetsMake(0, 0, - _LNPopupSafeAreas(self.popupPresentationContainerViewController).bottom, 0));		
+		return __LNEdgeInsetsSum(self.popupPresentationContainerViewController.view.safeAreaInsets, UIEdgeInsetsMake(0, 0, - _LNPopupSafeAreas(self.popupPresentationContainerViewController).bottom, 0));
 	}
 	
 	UIEdgeInsets insets = [self _vSAIFS];

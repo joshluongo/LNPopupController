@@ -179,7 +179,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * @param animated        Pass @c true to animate the presentation; otherwise, pass @c false.
  * @param completion      The block to execute after the presentation finishes. This block has no return value and takes no parameters. You may specify @c nil for this parameter.
  */
-- (void)presentPopupBarWithContentViewController:(UIViewController*)controller animated:(BOOL)animated completion:(nullable void(^)(void))completion;
+- (void)presentPopupBarWithContentViewController:(UIViewController*)controller animated:(BOOL)animated completion:(nullable void(^)(void))completion NS_SWIFT_DISABLE_ASYNC;
 
 /**
  * Presents an interactive popup bar in the receiver's view hierarchy and optionally opens the popup in the same animation. The popup bar is attached to the receiver's docking view. @see @c -[UIViewController bottomDockingViewForPopupBar]
@@ -193,7 +193,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * @param animated        Pass @c true to animate the presentation; otherwise, pass @c false.
  * @param completion      The block to execute after the presentation finishes. This block has no return value and takes no parameters. You may specify @c nil for this parameter.
  */
-- (void)presentPopupBarWithContentViewController:(UIViewController*)controller openPopup:(BOOL)openPopup animated:(BOOL)animated completion:(nullable void(^)(void))completion;
+- (void)presentPopupBarWithContentViewController:(UIViewController*)controller openPopup:(BOOL)openPopup animated:(BOOL)animated completion:(nullable void(^)(void))completion NS_SWIFT_DISABLE_ASYNC;
 
 /**
  * Opens the popup, displaying the content view controller's view.
@@ -201,7 +201,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * @param animated        Pass @c true to animate; otherwise, pass @c false.
  * @param completion      The block to execute after the popup is opened. This block has no return value and takes no parameters. You may specify @c nil for this parameter.
  */
-- (void)openPopupAnimated:(BOOL)animated completion:(nullable void(^)(void))completion;
+- (void)openPopupAnimated:(BOOL)animated completion:(nullable void(^)(void))completion NS_SWIFT_DISABLE_ASYNC;
 
 /**
  * Closes the popup, hiding the content view controller's view.
@@ -209,7 +209,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * @param animated        Pass @c true to animate; otherwise, pass @c false.
  * @param completion      The block to execute after the popup is closed. This block has no return value and takes no parameters. You may specify @c nil for this parameter.
  */
-- (void)closePopupAnimated:(BOOL)animated completion:(nullable void(^)(void))completion;
+- (void)closePopupAnimated:(BOOL)animated completion:(nullable void(^)(void))completion NS_SWIFT_DISABLE_ASYNC;
 
 /**
  * Dismisses the popup presentation, closing the popup if open and dismissing the popup bar.
@@ -217,7 +217,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * @param animated        Pass @c true to animate; otherwise, pass @c false.
  * @param completion      The block to execute after the dismissal. This block has no return value and takes no parameters. You may specify @c nil for this parameter.
  */
-- (void)dismissPopupBarAnimated:(BOOL)animated completion:(nullable void(^)(void))completion;
+- (void)dismissPopupBarAnimated:(BOOL)animated completion:(nullable void(^)(void))completion NS_SWIFT_DISABLE_ASYNC;
 
 /**
  * The popup bar interaction style.
@@ -291,6 +291,13 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
  * The default implmentation for @c UIViewController returns an invisible @c UIView instance, docked to the bottom. For @c UINavigationController, the toolbar is returned. For @c UITabBarController, the tab bar is returned.
  */
 @property (nullable, nonatomic, strong, readonly) __kindof UIView* bottomDockingViewForPopupBar;
+
+/**
+ * Controls whether the popup bar should fade out during its dismissal animation.
+ *
+ * By default, this property's value is @c true if the popup bar is extended (see @c UIViewController.shouldExtendPopupBarUnderSafeArea) and the extension is visible, or if the bottom bar (toolbar or tab bar) is about to transition to its scroll edge appearance, and the scroll edge appearance has a transparent background.
+ */
+@property (nonatomic, assign, readonly) BOOL shouldFadePopupBarOnDismiss;
 
 /**
  * Return the default frame for the docking view, when the popup is in hidden or closed state. If @c bottomDockingViewForPopupBar returns @c nil, this method is not called, and the default system-provided frame is used.
