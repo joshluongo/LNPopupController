@@ -223,9 +223,11 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 	
 	[self.popupContentView setControllerOverrideUserInterfaceStyle:currentContentController.overrideUserInterfaceStyle];
 	currentContentController.view.translatesAutoresizingMaskIntoConstraints = YES;
-	_currentContentController.view.autoresizingMask = UIViewAutoresizingNone;
+	currentContentController.view.autoresizingMask = UIViewAutoresizingNone;
 	currentContentController.view.frame = self.popupContentView.contentView.bounds;
+	[currentContentController viewWillMoveToPopupContainerContentView:self.popupContentView];
 	[self.popupContentView.contentView addSubview:currentContentController.view];
+	[currentContentController viewDidMoveToPopupContainerContentView:self.popupContentView];
 }
 
 - (void)_removeContentControllerFromContentView:(UIViewController*)currentContentController
@@ -235,7 +237,9 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 		return;
 	}
 	
-	[_currentContentController.view removeFromSuperview];
+	[currentContentController viewWillMoveToPopupContainerContentView:nil];
+	[currentContentController.view removeFromSuperview];
+	[currentContentController viewDidMoveToPopupContainerContentView:nil];
 }
 
 - (void)_transitionToState:(LNPopupPresentationState)state notifyDelegate:(BOOL)notifyDelegate animated:(BOOL)animated useSpringAnimation:(BOOL)spring allowPopupBarAlphaModification:(BOOL)allowBarAlpha completion:(void(^)(void))completion transitionOriginatedByUser:(BOOL)transitionOriginatedByUser
@@ -377,16 +381,24 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 			
 			_popupContentView.accessibilityViewIsModal = NO;
 			UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
-			
-			if(_popupControllerPublicState == LNPopupPresentationStateOpen)
+		}
+		
+		_popupControllerInternalState = state;
+		if(state != _LNPopupPresentationStateTransitioning)
+		{
+			[_containerController _ln_setPopupPresentationState:state];
+			[self _end120HzHack];
+		}
+		
+		if(state == LNPopupPresentationStateBarPresented && _popupControllerPublicState == LNPopupPresentationStateBarPresented)
+		{
+			if(_LNCallDelegateObjectObjectBool(_containerController, _currentContentController, @selector(popupPresentationController:didClosePopupWithContentController:animated:), animated) == NO)
 			{
-				if(_LNCallDelegateObjectObjectBool(_containerController, _currentContentController, @selector(popupPresentationController:didClosePopupWithContentController:animated:), animated) == NO)
-				{
-					_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidClosePopup:animated:), animated);
-				}
+				_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidClosePopup:animated:), animated);
 			}
 		}
-		else if(state == LNPopupPresentationStateOpen)
+		
+		if(state == LNPopupPresentationStateOpen)
 		{
 			if(stateAtStart == LNPopupPresentationStateBarPresented)
 			{
@@ -402,20 +414,13 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 			_popupContentView.accessibilityViewIsModal = YES;
 			UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, _popupContentView.popupCloseButton);
 			
-			if(_popupControllerPublicState == LNPopupPresentationStateBarPresented)
+			if(_popupControllerPublicState == LNPopupPresentationStateOpen)
 			{
 				if(_LNCallDelegateObjectObjectBool(_containerController, _currentContentController, @selector(popupPresentationController:didOpenPopupWithContentController:animated:), animated) == NO)
 				{
 					_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidOpenPopup:animated:), animated);
 				}
 			}
-		}
-		
-		_popupControllerInternalState = state;
-		if(state != _LNPopupPresentationStateTransitioning)
-		{
-			[_containerController _ln_setPopupPresentationState:state];
-			[self _end120HzHack];
 		}
 		
 		if(completion)
@@ -434,7 +439,7 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 		return;
 	}
 	
-	[UIView animateWithDuration:resolvedStyle == LNPopupInteractionStyleSnap ? 0.65 : 0.5 delay:0.0 usingSpringWithDamping:spring ? 0.8 : 1.0 initialSpringVelocity:0 options:UIViewAnimationOptionLayoutSubviews | UIViewAnimationOptionAllowAnimatedContent | UIViewAnimationOptionBeginFromCurrentState animations:animationBlock completion:completionBlock];
+	[UIView animateWithDuration:resolvedStyle == LNPopupInteractionStyleSnap ? 0.4 : 0.5 delay:0.0 usingSpringWithDamping:spring ? 0.8 : 1.0 initialSpringVelocity:0 options:UIViewAnimationOptionLayoutSubviews | UIViewAnimationOptionAllowAnimatedContent | UIViewAnimationOptionBeginFromCurrentState animations:animationBlock completion:completionBlock];
 }
 
 - (void)_popupBarLongPressGestureRecognized:(UILongPressGestureRecognizer*)lpgr
@@ -1210,14 +1215,6 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 			[self.popupBar.customBarViewController _userFacing_viewDidAppear:animated];
 			_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidPresentPopupBar:animated:), animated);
 			
-			if(open)
-			{
-				if(_LNCallDelegateObjectObjectBool(_containerController, _currentContentController, @selector(popupPresentationController:didOpenPopupWithContentController:animated:), animated) == NO)
-				{
-					_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidOpenPopup:animated:), animated);
-				}
-			}
-			
 			self.popupBar.acceptsSizing = YES;
 			
 			if(completionBlock != nil && !open)
@@ -1355,9 +1352,9 @@ static void __LNPopupControllerDeeplyEnumerateSubviewsUsingBlock(UIView* view, v
 				
 				_effectiveStatusBarUpdateController = nil;
 				
-				_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidDismissPopupBar:animated:), animated);
-				
 				[_containerController _ln_setPopupPresentationState:LNPopupPresentationStateBarHidden];
+				
+				_LNCallDelegateObjectBool(_containerController, @selector(popupPresentationControllerDidDismissPopupBar:animated:), animated);
 				
 				_bottomBar = nil;
 				
