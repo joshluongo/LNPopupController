@@ -9,7 +9,6 @@
 #import "UIViewController+LNPopupSupportPrivate.h"
 #import "LNPopupItem+Private.h"
 #import "_LNWeakRef.h"
-#import "UIViewController+LNPopupSupportPrivate.h"
 #import "UIView+LNPopupSupportPrivate.h"
 #import "_LNPopupSwizzlingUtils.h"
 #import "LNMath.h"
@@ -89,10 +88,7 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 		[NSException raise:NSInternalInconsistencyException format:@"Content view controller cannot be the same as the presenting controller."];
 	}
 	
-	self.popupContentViewController = controller;
-	controller.popupPresentationContainerViewController = self;
-	
-	[self._ln_popupController presentPopupBarAnimated:animated openPopup:openPopup completion:completionBlock];
+	[self._ln_popupController presentPopupBarWithContentViewController:controller openPopup:openPopup animated:animated completion:completionBlock];
 }
 
 - (void)presentPopupBarWithContentViewController:(UIViewController*)controller animated:(BOOL)animated completion:(void(^)(void))completionBlock
@@ -163,11 +159,6 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 	}];
 }
 
-- (void)updatePopupBarAppearance
-{
-	[self setNeedsPopupBarAppearanceUpdate];
-}
-
 - (void)setNeedsPopupBarAppearanceUpdate
 {
 	[self._ln_popupController_nocreate _configurePopupBarFromBottomBar];
@@ -196,6 +187,16 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 	}
 	
 	return [self.parentViewController _isContainedInPopupController];
+}
+
+- (BOOL)_isContainedInOpenPopupController
+{
+	if(self.popupPresentationContainerViewController != nil)
+	{
+		return self.popupPresentationContainerViewController._ln_popupController_nocreate.popupControllerPublicState == LNPopupPresentationStateOpen;
+	}
+	
+	return [self.parentViewController _isContainedInOpenPopupController];
 }
 
 - (BOOL)_isContainedInPopupControllerOrDeallocated
@@ -309,6 +310,16 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 	return self.view;
 }
 
+- (BOOL)allowPopupHapticFeedbackGeneration
+{
+	return self._ln_popupController.wantsFeedbackGeneration;
+}
+
+- (void)setAllowPopupHapticFeedbackGeneration:(BOOL)allowPopupHapticFeedbackGeneration
+{
+	self._ln_popupController.wantsFeedbackGeneration = allowPopupHapticFeedbackGeneration;
+}
+
 @end
 
 @implementation UIViewController (LNCustomContainerPopupSupport)
@@ -398,18 +409,24 @@ static NSString* const ePCIEBase64 = @"X2V4aXN0aW5nUHJlc2VudGF0aW9uQ29udHJvbGxlc
 - (void)setShouldExtendPopupBarUnderSafeArea:(BOOL)shouldExtendPopupBarUnderSafeArea
 {
 	objc_setAssociatedObject(self, _LNPopupShouldExtendUnderSafeAreaKey, @(shouldExtendPopupBarUnderSafeArea), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	
+	self._ln_bottomBarExtension.alpha = shouldExtendPopupBarUnderSafeArea ? 1.0 : 0.0;
+	
+	[self.view setNeedsLayout];
+	[self.view layoutIfNeeded];
 }
 
 - (BOOL)shouldFadePopupBarOnDismiss
 {
-	BOOL bottomBarExtensionIsVisible = self._ln_bottomBarExtension_nocreate.isHidden == NO && self._ln_bottomBarExtension_nocreate.alpha > 0;
+	BOOL bottomBarExtensionIsVisible = self._ln_bottomBarExtension_nocreate.isHidden == NO && self._ln_bottomBarExtension_nocreate.alpha > 0 && self._ln_bottomBarExtension_nocreate.frame.size.height > 0;
+	BOOL backgroundVisible = self.ln_popupController.popupBar.backgroundView.isHidden == NO && self.ln_popupController.popupBar.backgroundView.alpha > 0;
 	BOOL scrollEdgeAppearanceRequiresFade = NO;
 	if(@available(iOS 15, *))
 	{
-		scrollEdgeAppearanceRequiresFade = [self.ln_popupController.bottomBar _ln_scrollEdgeAppearanceRequiresFadeForPopupBar:self.popupBar];
+		scrollEdgeAppearanceRequiresFade = self.ln_popupController.bottomBar.hidden == NO && [self.ln_popupController.bottomBar _ln_scrollEdgeAppearanceRequiresFadeForPopupBar:self.popupBar];
 	}
 	
-	return bottomBarExtensionIsVisible || scrollEdgeAppearanceRequiresFade;
+	return backgroundVisible && (bottomBarExtensionIsVisible || scrollEdgeAppearanceRequiresFade);
 }
 
 @end

@@ -12,6 +12,18 @@
 #import "_LNPopupSwizzlingUtils.h"
 #import "LNPopupContentView+Private.h"
 
+@interface LNPopupCloseButton ()
+
+- (id)_aPVFGR;
+- (void)_didTouchDown;
+- (void)_didTouchDragExit;
+- (void)_didTouchDragEnter;
+- (void)_didTouchUp;
+- (void)_didTouchCancel;
+
+@end
+
+__attribute__((objc_direct_members))
 @implementation LNPopupCloseButton
 {
 	__weak LNPopupContentView* _contentView;
@@ -76,7 +88,7 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 			};
 		}
 		
-		_style = LNPopupCloseButtonStyleChevron;
+		_style = LNPopupCloseButtonStyleGrabber;
 		[self _setupForChevronButton];
 	}
 	
@@ -104,7 +116,7 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 	{
 		[self _setupForCircularButton];
 	}
-	else if(_style == LNPopupCloseButtonStyleChevron)
+	else if(_style == LNPopupCloseButtonStyleChevron || _style == LNPopupCloseButtonStyleGrabber)
 	{
 		[self _setupForChevronButton];
 	}
@@ -127,13 +139,32 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 	_highlightView = nil;
 	
 	[self setImage:nil forState:UIControlStateNormal];
+	self.tintColor = nil;
+	
+	self.layer.shadowColor = nil;
+	self.layer.shadowOpacity = 0;
+	self.layer.shadowRadius = 0;
+	self.layer.shadowOffset = CGSizeMake(0, 0);
+	self.layer.masksToBounds = YES;
 }
 
 - (void)_setupForChevronButton
 {
-	_chevronView = [[LNChevronView alloc] initWithFrame:CGRectMake(0, 0, 42, 15)];
-	_chevronView.width = 5.5;
-	[_chevronView setState:LNChevronViewStateUp animated:NO];
+	CGRect frame;
+	if(_style == LNPopupCloseButtonStyleGrabber)
+	{
+		frame = CGRectMake(0, 0, 36, 15);
+	}
+	else
+	{
+		frame = CGRectMake(0, 0, 40, 20);
+	}
+	
+	_chevronView = [[LNChevronView alloc] initWithFrame:frame];
+	_chevronView.width = 5.0;
+	[_chevronView setState:_style == LNPopupCloseButtonStyleGrabber ? LNChevronViewStateFlat : LNChevronViewStateUp animated:NO];
+	
+	self.tintColor = [UIColor colorWithWhite:0.5 alpha:1.0];
 	[self addSubview:_chevronView];
 }
 
@@ -168,6 +199,7 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 	self.layer.shadowOffset = CGSizeMake(0, 0);
 	self.layer.masksToBounds = NO;
 	
+	self.tintColor = [UIColor labelColor];
 	[self setTitleColor:self.tintColor forState:UIControlStateNormal];
 	
 	UIImageSymbolConfiguration* config = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightHeavy scale:UIImageSymbolScaleSmall];
@@ -210,7 +242,7 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 		};
 		
 		if (animated) {
-			[UIView animateWithDuration:0.47 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+			[UIView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
 				alphaBlock();
 			} completion:nil];
 		} else {
@@ -252,9 +284,13 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 	{
 		return CGSizeMake(24, 24);
 	}
-	else
+	else if(_style == LNPopupCloseButtonStyleChevron)
 	{
 		return CGSizeMake(42, 25);
+	}
+	else
+	{
+		return CGSizeMake(36, 25);
 	}
 }
 
@@ -270,6 +306,11 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 		return;
 	}
 	
+	if(_style == LNPopupCloseButtonStyleGrabber)
+	{
+		return;
+	}
+	
 	[_chevronView setState:LNChevronViewStateUp animated:YES];
 }
 
@@ -280,7 +321,19 @@ static NSString* const _aPVFGR = @"X2FjdGluZ1BhcmVudFZpZXdGb3JHZXN0dXJlUmVjb2dua
 		return;
 	}
 	
+	if(_style == LNPopupCloseButtonStyleGrabber)
+	{
+		return;
+	}
+	
 	[_chevronView setState:LNChevronViewStateFlat animated:YES];
+}
+
+- (void)setTintColor:(UIColor *)tintColor
+{
+	[super setTintColor:tintColor];
+	
+	_chevronView.tintColor = self.tintColor;
 }
 
 - (void)tintColorDidChange

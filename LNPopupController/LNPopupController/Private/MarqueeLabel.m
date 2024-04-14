@@ -39,6 +39,9 @@ typedef void(^MLAnimationCompletionBlock)(BOOL finished);
 @end
 
 @interface MarqueeLabel()
+{
+	MarqueeType _userMarqueeType;
+}
 
 @property (nonatomic, strong) UILabel *subLabel;
 
@@ -131,7 +134,7 @@ CGPoint MLOffsetCGPoint(CGPoint point, CGFloat offset);
         [self setupLabel];
         
         _scrollDuration = aLengthOfScroll;
-        self.fadeLength = MIN(aFadeLength, frame.size.width/2);
+		self.fadeLength = aFadeLength;
     }
     return self;
 }
@@ -142,7 +145,7 @@ CGPoint MLOffsetCGPoint(CGPoint point, CGFloat offset);
         [self setupLabel];
         
         _rate = pixelsPerSec;
-        self.fadeLength = MIN(aFadeLength, frame.size.width/2);
+		self.fadeLength = aFadeLength;
     }
     return self;
 }
@@ -279,6 +282,8 @@ CGPoint MLOffsetCGPoint(CGPoint point, CGFloat offset);
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+	
+	[self _updateEffectiveMarqueeType];
     
     [self updateSublabel];
 }
@@ -1237,6 +1242,17 @@ CGPoint MLOffsetCGPoint(CGPoint point, CGFloat offset);
     [self updateSublabel];
 }
 
+- (BOOL)adjustsFontForContentSizeCategory
+{
+	return self.subLabel.adjustsFontSizeToFitWidth;
+}
+
+- (void)setAdjustsFontForContentSizeCategory:(BOOL)adjustsFontForContentSizeCategory 
+{
+	self.subLabel.adjustsFontForContentSizeCategory = adjustsFontForContentSizeCategory;
+	super.adjustsFontForContentSizeCategory = adjustsFontForContentSizeCategory;
+}
+
 - (UIColor *)textColor {
     return self.subLabel.textColor;
 }
@@ -1456,12 +1472,28 @@ CGPoint MLOffsetCGPoint(CGPoint point, CGFloat offset);
     }
 }
 
+- (void)_updateEffectiveMarqueeType
+{
+	BOOL isRTL = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
+	
+	if(isRTL)
+	{
+		_marqueeType = _userMarqueeType == MLContinuous ? MLContinuousReverse : MLContinuous;
+	}
+	else
+	{
+		_marqueeType = _userMarqueeType == MLContinuous ? MLContinuous : MLContinuousReverse;
+	}
+}
+
 - (void)setMarqueeType:(MarqueeType)marqueeType {
-    if (marqueeType == _marqueeType) {
+    if (marqueeType == _userMarqueeType) {
         return;
     }
     
-    _marqueeType = marqueeType;
+	_userMarqueeType = marqueeType;
+	
+	[self _updateEffectiveMarqueeType];
     
     [self updateSublabel];
 }

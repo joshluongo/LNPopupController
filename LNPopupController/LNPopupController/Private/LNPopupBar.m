@@ -11,6 +11,70 @@
 #import "MarqueeLabel.h"
 #import "_LNPopupSwizzlingUtils.h"
 #import "NSAttributedString+LNPopupSupport.h"
+#import "_LNPopupBarShadowedImageView.h"
+
+#ifdef DEBUG
+static NSUserDefaults* __LNDebugUserDefaults(void)
+{
+	static NSUserDefaults* rv = nil;
+	
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		SEL sel = NSSelectorFromString(@"settingDefaults");
+		if([NSUserDefaults respondsToSelector:sel])
+		{
+			rv = [NSUserDefaults valueForKey:@"settingDefaults"];
+		}
+		else
+		{
+			rv = NSUserDefaults.standardUserDefaults;
+		}
+	});
+	
+	return rv;
+}
+
+static BOOL _LNEnableBarLayoutDebug(void)
+{
+	return [__LNDebugUserDefaults() boolForKey:@"__LNPopupBarEnableLayoutDebug"];
+}
+#endif
+
+CGFloat _LNPopupBarHeightForPopupBar(LNPopupBar* popupBar)
+{
+	if(popupBar.customBarViewController) { return popupBar.customBarViewController.preferredContentSize.height; }
+	
+	CGFloat additionalHeight = 0;
+	static NSDictionary<NSString*, NSNumber*>* additionalHeightMapping = nil;
+	static dispatch_once_t token;
+	dispatch_once(&token, ^{
+		additionalHeightMapping = @{
+			UIContentSizeCategoryExtraSmall : @0,
+			UIContentSizeCategorySmall : @0,
+			UIContentSizeCategoryMedium : @0,
+			UIContentSizeCategoryLarge : @0,
+			UIContentSizeCategoryExtraLarge : @0,
+			UIContentSizeCategoryExtraExtraLarge : @0,
+			UIContentSizeCategoryExtraExtraExtraLarge : @7,
+			UIContentSizeCategoryAccessibilityMedium : @14,
+			UIContentSizeCategoryAccessibilityLarge : @21,
+			UIContentSizeCategoryAccessibilityExtraLarge : @28,
+			UIContentSizeCategoryAccessibilityExtraExtraLarge : @35,
+			UIContentSizeCategoryAccessibilityExtraExtraExtraLarge : @42,
+		};
+	});
+	additionalHeight = [additionalHeightMapping[popupBar.traitCollection.preferredContentSizeCategory] doubleValue];
+	
+	switch(popupBar.resolvedStyle)
+	{
+		case LNPopupBarStyleCompact:
+			return LNPopupBarHeightCompact + additionalHeight;
+		case LNPopupBarStyleFloating:
+			return LNPopupBarHeightFloating + additionalHeight;
+		default:
+			return LNPopupBarHeightProminent + additionalHeight;
+	}
+}
 
 #ifndef LNPopupControllerEnforceStrictClean
 //_effectWithStyle:tintColor:invertAutomaticStyle:
@@ -27,16 +91,26 @@ static void __setupFunction(void)
 }
 #endif
 
-@interface _LNPopupBarContentView : UIView @end
+@interface _LNPopupBarContentView : _LNPopupBarBackgroundView @end
 @implementation _LNPopupBarContentView @end
 
-@interface _LNPopupBarTitlesView : UIView @end
+@interface _LNPopupBarTitlesView : UIStackView @end
 @implementation _LNPopupBarTitlesView @end
 
-@interface _LNPopupBarShadowView : UIView @end
+@interface _LNPopupBarShadowView : UIImageView @end
 @implementation _LNPopupBarShadowView @end
 
-@interface _LNPopupToolbar : UIToolbar @end
+@protocol _LNPopupToolbarLayoutDelegate <NSObject>
+
+- (void)_toolbarDidLayoutSubviews;
+
+@end
+
+@interface _LNPopupToolbar : UIToolbar
+
+@property (nonatomic, weak) id<_LNPopupToolbarLayoutDelegate> _layoutDelegate;
+
+@end
 @implementation _LNPopupToolbar
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
@@ -60,6 +134,8 @@ static void __setupFunction(void)
 	
 	//On iOS 11 and above reset the semantic content attribute to make sure it propagades to all subviews.
 	[self setSemanticContentAttribute:self.semanticContentAttribute];
+	
+	[self._layoutDelegate _toolbarDidLayoutSubviews];
 }
 
 - (void)_deepSetSemanticContentAttribute:(UISemanticContentAttribute)semanticContentAttribute toView:(UIView*)view startingFromView:(UIView*)staringView;
@@ -122,27 +198,48 @@ static void __setupFunction(void)
 
 const CGFloat LNPopupBarHeightCompact = 40.0;
 const CGFloat LNPopupBarHeightProminent = 64.0;
+const CGFloat LNPopupBarHeightFloating = 64.0;
 const CGFloat LNPopupBarProminentImageWidth = 48.0;
-
-const UIBlurEffectStyle LNBackgroundStyleInherit = -9876;
+const CGFloat LNPopupBarFloatingImageWidth = 40.0;
 
 static BOOL __animatesItemSetter = NO;
 
+@interface LNPopupBar () <_LNPopupToolbarLayoutDelegate>
+
+- (void)_windowWillRotate:(NSNotification*)note;
+- (void)_windowDidRotate:(NSNotification*)note;
+- (UIFont*)_titleFont;
+- (UIColor*)_titleColor;
+- (UIFont*)_subtitleFont;
+- (UIColor*)_subtitleColor;
+
+@end
+
+__attribute__((objc_direct_members))
 @implementation LNPopupBar
 {
-	LNPopupBarStyle _resolvedStyle;
-
 	BOOL _delaysBarButtonItemLayout;
-	UIView* _titlesView;
+	
+	_LNPopupBarShadowedImageView* _imageView;
+	
+	_LNPopupBarTitlesView* _titlesView;
+	NSLayoutConstraint* _titlesViewLeadingConstraint;
+	NSLayoutConstraint* _titlesViewTrailingConstraint;
+	
 	UILabel<__MarqueeLabelType>* _titleLabel;
 	UILabel<__MarqueeLabelType>* _subtitleLabel;
+	
 	BOOL _needsLabelsLayout;
 	BOOL _marqueePaused;
 	
 	UIColor* _userTintColor;
 	UIColor* _userBackgroundColor;
 	
-	UIToolbar* _toolbar;
+	_LNPopupToolbar* _toolbar;
+	BOOL _inLayout;
+	
+	UIWindow* _swiftHacksWindow1;
+	UIWindow* _swiftHacksWindow2;
 }
 
 + (void)setAnimatesItemSetter:(BOOL)animate
@@ -154,7 +251,8 @@ static BOOL __animatesItemSetter = NO;
 {
 	if(self.activeAppearanceChain.chain.count == 0)
 	{
-		return nil;
+		//Should never visit this code block.
+		[self _recalcActiveAppearanceChain];
 	}
 	
 	return (LNPopupBarAppearance*)self.activeAppearanceChain;
@@ -205,15 +303,19 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		
 		[self _fixupSwiftUIControllersWithBarStyle];
 		
+		[_barContainingController.bottomDockingViewForPopup_nocreateOrDeveloper setNeedsLayout];
+		[_barContainingController.view setNeedsLayout];
 		[self setNeedsLayout];
+		
+		[self _appearanceDidChange];
 		
 		[self._barDelegate _popupBarMetricsDidChange:self];
 	}
 }
 
-- (void)_setHighlightAlpha:(CGFloat)alpha animated:(BOOL)animated
+- (LNPopupBarStyle)effectiveBarStyle
 {
-	
+	return _resolvedStyle;
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
@@ -222,7 +324,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	
 	if(animated)
 	{
-		[UIView animateWithDuration:0.2 animations:block];
+		[UIView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:block completion:nil];
 	}
 	else
 	{
@@ -237,7 +339,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	if(self)
 	{
 		self.preservesSuperviewLayoutMargins = YES;
-		self.clipsToBounds = YES;
+		self.clipsToBounds = NO;
 		
 		if (@available(iOS 13.4, *))
 		{
@@ -253,80 +355,114 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		_backgroundView.userInteractionEnabled = NO;
 		[self addSubview:_backgroundView];
 		
-		_contentView = [_LNPopupBarContentView new];
+		_floatingBackgroundShadowView = [_LNPopupBackgroundShadowView new];
+		_floatingBackgroundShadowView.userInteractionEnabled = NO;
+		_floatingBackgroundShadowView.alpha = 0.0;
+		[self addSubview:_floatingBackgroundShadowView];
+		
+		_contentView = [[_LNPopupBarContentView alloc] initWithEffect:nil];
+		_contentView.clipsToBounds = NO;
 		[self addSubview:_contentView];
 		
-		_interactionBackgroundView = [[UIVisualEffectView alloc] initWithEffect:nil];
-		_interactionBackgroundView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-		_interactionBackgroundView.userInteractionEnabled = NO;
-		[_contentView addSubview:_interactionBackgroundView];
+		_contentMaskView = [UIView new];
+		_contentMaskView.backgroundColor = UIColor.whiteColor;
+		_contentMaskView.frame = self.bounds;
+		_contentView.maskView = _contentMaskView;
+		
+		_backgroundMaskView = [UIView new];
+		_backgroundMaskView.backgroundColor = UIColor.whiteColor;
+		_backgroundMaskView.frame = self.bounds;
+		_backgroundView.effectView.maskView = _backgroundMaskView;
+		
+		_backgroundGradientMaskView = [_LNPopupBarBackgroundMaskView new];
+		_backgroundView.maskView = _backgroundGradientMaskView;
 		
 		self.effectGroupingIdentifier = nil;
 		
 		_resolvedStyle = _LNPopupResolveBarStyleFromBarStyle(_barStyle);
 		
-		_toolbar = [[_LNPopupToolbar alloc] initWithFrame:self.bounds];
+		_toolbar = [[_LNPopupToolbar alloc] initWithFrame:CGRectMake(0, 0, 400, 44)];
+		_toolbar._layoutDelegate = self;
 		[_toolbar.standardAppearance configureWithTransparentBackground];
-		_toolbar.compactAppearance = nil;
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000
+		
+#if DEBUG
+		if(_LNEnableBarLayoutDebug())
+		{
+			_toolbar.standardAppearance.backgroundColor = [UIColor.yellowColor colorWithAlphaComponent:0.7];
+			_toolbar.layer.borderColor = UIColor.blackColor.CGColor;
+			_toolbar.layer.borderWidth = 1.0;
+		}
+#endif
+		_toolbar.compactAppearance = _toolbar.standardAppearance;
 		if(@available(iOS 15.0, *))
 		{
 			_toolbar.scrollEdgeAppearance = nil;
 			_toolbar.compactScrollEdgeAppearance = nil;
 		}
-#endif
 		_toolbar.autoresizingMask = UIViewAutoresizingNone;
-		_toolbar.layer.masksToBounds = NO;
-		[_contentView addSubview:_toolbar];
+		_toolbar.layer.masksToBounds = YES;
+		[_contentView.contentView addSubview:_toolbar];
 		
-		_titlesView = [[_LNPopupBarTitlesView alloc] initWithFrame:self.bounds];
+		_titlesView = [[_LNPopupBarTitlesView alloc] initWithFrame:_contentView.bounds];
+		_titlesView.axis = UILayoutConstraintAxisVertical;
+		_titlesView.alignment = UIStackViewAlignmentFill;
+		_titlesView.distribution = UIStackViewDistributionFill;
 		_titlesView.autoresizingMask = UIViewAutoresizingNone;
 		_titlesView.accessibilityTraits = UIAccessibilityTraitButton;
 		_titlesView.isAccessibilityElement = YES;
+		_titlesView.translatesAutoresizingMaskIntoConstraints = NO;
 		
 		_backgroundView.accessibilityTraits = UIAccessibilityTraitButton;
 		_backgroundView.accessibilityIdentifier = @"PopupBarView";
 		
-		[_contentView addSubview:_titlesView];
+		[_contentView.contentView addSubview:_titlesView];
+		_titlesViewLeadingConstraint = [_titlesView.leadingAnchor constraintEqualToAnchor:_contentView.leadingAnchor];
+		_titlesViewTrailingConstraint = [_contentView.trailingAnchor constraintEqualToAnchor:_titlesView.trailingAnchor];
+		[NSLayoutConstraint activateConstraints:@[
+			_titlesViewLeadingConstraint,
+			_titlesViewTrailingConstraint,
+			[_contentView.centerYAnchor constraintEqualToAnchor:_titlesView.centerYAnchor]
+		]];
 		
 		_progressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
 		_progressView.progressViewStyle = UIProgressViewStyleBar;
 		_progressView.trackImage = [UIImage new];
-		[_contentView addSubview:_progressView];
+		[_contentView.contentView addSubview:_progressView];
 		[self _updateProgressViewWithStyle:self.progressViewStyle];
 		
 		_needsLabelsLayout = YES;
 		
-		_imageView = [UIImageView new];
+		_imageView = [_LNPopupBarShadowedImageView new];
 		_imageView.autoresizingMask = UIViewAutoresizingNone;
 		_imageView.contentMode = UIViewContentModeScaleAspectFit;
 		_imageView.accessibilityTraits = UIAccessibilityTraitImage;
 		_imageView.isAccessibilityElement = YES;
-		_imageView.layer.cornerCurve = kCACornerCurveCircular;
-		_imageView.layer.cornerRadius = 6;
+		_imageView.layer.cornerCurve = kCACornerCurveContinuous;
 		_imageView.layer.masksToBounds = YES;
+		_imageView.cornerRadius = 6;
+		
 		// support smart invert and therefore do not invert image view colors
 		_imageView.accessibilityIgnoresInvertColors = YES;
 		
-		[_contentView addSubview:_imageView];
+		[_contentView.contentView addSubview:_imageView];
 		
 		_shadowView = [_LNPopupBarShadowView new];
 		[_backgroundView.contentView addSubview:_shadowView];
 		
 		_bottomShadowView = [_LNPopupBarShadowView new];
 		_bottomShadowView.hidden = YES;
-		[_contentView addSubview:_bottomShadowView];
+		[_backgroundView.contentView addSubview:_bottomShadowView];
 		
-		_highlightView = [[UIView alloc] initWithFrame:self.bounds];
-		_highlightView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+		_highlightView = [[UIView alloc] initWithFrame:_contentView.bounds];
 		_highlightView.userInteractionEnabled = NO;
 		_highlightView.alpha = 0.0;
-		[_contentView addSubview:_highlightView];
 		
 		self.semanticContentAttribute = UISemanticContentAttributeUnspecified;
 		self.barItemsSemanticContentAttribute = UISemanticContentAttributePlayback;
 		
 		self.isAccessibilityElement = NO;
+		
+		_wantsBackgroundCutout = YES;
 		
 		[self _recalcActiveAppearanceChain];
 	}
@@ -336,7 +472,21 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
+	[super traitCollectionDidChange:previousTraitCollection];
+	
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
+	[self layoutIfNeeded];
+	
 	[self._barDelegate _traitCollectionForPopupBarDidChange:self];
+	if(previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle)
+	{
+		[self _appearanceDidChange];
+	}
+	
+	if(UIContentSizeCategoryCompareToCategory(previousTraitCollection.preferredContentSizeCategory, self.traitCollection.preferredContentSizeCategory) != NSOrderedSame)
+	{
+		[self._barDelegate _popupBarMetricsDidChange:self];
+	}
 }
 
 - (void)_updateProgressViewWithStyle:(LNPopupBarProgressViewStyle)style
@@ -353,76 +503,279 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	if(_customBarViewController)
 	{
 		CGRect frame = self.bounds;
-
-		CGFloat barHeight = _LNPopupBarHeightForBarStyle(_resolvedStyle, _customBarViewController);
+		
+		CGFloat barHeight = _LNPopupBarHeightForPopupBar(self);
 		frame.size.height = barHeight;
 		[_contentView setFrame:frame];
 	}
-
+	
 	[super updateConstraints];
 }
 
 - (void)_layoutCustomBarController
 {
+	_customBarViewController.view.preservesSuperviewLayoutMargins = NO;
+	
 	if(_customBarViewController == nil || _customBarViewController.view.translatesAutoresizingMaskIntoConstraints == NO)
 	{
 		return;
 	}
+	
+	_customBarViewController.view.autoresizingMask = UIViewAutoresizingNone;
 	
 	CGRect frame = _contentView.bounds;
 	frame.size.height = _customBarViewController.preferredContentSize.height;
 	_customBarViewController.view.frame = frame;
 }
 
+- (void)setWantsBackgroundCutout:(BOOL)wantsBackgroundCutout
+{
+	[self setWantsBackgroundCutout:wantsBackgroundCutout allowImplicitAnimations:NO];
+}
+
+- (void)setWantsBackgroundCutout:(BOOL)wantsBackgroundCutout allowImplicitAnimations:(BOOL)allowImplicitAnimations
+{
+	if(_wantsBackgroundCutout != wantsBackgroundCutout)
+	{
+		_wantsBackgroundCutout = wantsBackgroundCutout;
+		[_backgroundGradientMaskView setWantsCutout:wantsBackgroundCutout animated:allowImplicitAnimations];
+	}
+}
+
 - (void)layoutSubviews
 {
 	[super layoutSubviews];
 	
+	_inLayout = YES;
+
 	CGRect frame = self.bounds;
 	
-	CGFloat barHeight = _LNPopupBarHeightForBarStyle(_resolvedStyle, _customBarViewController);
+	CGFloat barHeight = _LNPopupBarHeightForPopupBar(self);
 	frame.size.height = barHeight;
-	[_contentView setFrame:frame];
+	
 	[_backgroundView setFrame:frame];
+	_backgroundView.layer.mask.frame = _backgroundView.bounds;
+	
+	BOOL isFloating = _resolvedStyle == LNPopupBarStyleFloating;
+	BOOL isProminent = _resolvedStyle == LNPopupBarStyleProminent;
+	BOOL isCustom = _resolvedStyle == LNPopupBarStyleCustom;
+	BOOL isRTL = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
+	
+	CGRect contentFrame;
+	if(isFloating)
+	{
+		CGFloat inset = self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular ? 30 : 12;
+		contentFrame = CGRectOffset(UIEdgeInsetsInsetRect(frame, UIEdgeInsetsMake(4, MAX(self.safeAreaInsets.left + 12, inset), 4, MAX(self.safeAreaInsets.right + 12, inset))), 0, -2);
+		
+		_contentView.cornerRadius = 14;
+		
+		_backgroundGradientMaskView.hidden = NO;
+		_backgroundGradientMaskView.frame = _backgroundView.bounds;
+		_backgroundGradientMaskView.floatingFrame = contentFrame;
+		_backgroundGradientMaskView.floatingCornerRadius = _contentView.cornerRadius;
+		[_backgroundGradientMaskView setWantsCutout:self.wantsBackgroundCutout animated:NO];
+		[_backgroundGradientMaskView setNeedsDisplay];
+		
+		if(_backgroundView.maskView != _backgroundGradientMaskView)
+		{
+			_backgroundView.maskView = _backgroundGradientMaskView;
+		}
+		
+		_floatingBackgroundShadowView.hidden = NO;
+		_floatingBackgroundShadowView.frame = contentFrame;
+		_floatingBackgroundShadowView.cornerRadius = 14;
+		
+#if DEBUG
+		_floatingBackgroundShadowView.hidden = [__LNDebugUserDefaults() boolForKey:@"__LNPopupBarHideShadow"];
+#endif
+	}
+	else
+	{
+		if(isCustom)
+		{
+			contentFrame = frame;
+		}
+		else
+		{
+			UIEdgeInsets insets;
+			if(isRTL)
+			{
+				CGFloat inset = (isProminent ? MAX(self.safeAreaInsets.right, self.layoutMargins.right) : self.safeAreaInsets.right) - 8;
+				insets = UIEdgeInsetsMake(0, 0, 0, inset);
+			}
+			else
+			{
+				CGFloat inset = (isProminent ? MAX(self.safeAreaInsets.left, self.layoutMargins.left) : self.safeAreaInsets.left) - 8;
+				insets = UIEdgeInsetsMake(0, inset, 0, 0);
+			}
+			
+			contentFrame = UIEdgeInsetsInsetRect(frame, insets);
+		}
+		
+		_backgroundGradientMaskView.hidden = YES;
+		_backgroundView.maskView = nil;
+		
+		_contentView.cornerRadius = 0;
+		_floatingBackgroundShadowView.hidden = YES;
+	}
+	_contentView.frame = contentFrame;
+#if DEBUG
+	_contentView.hidden = [__LNDebugUserDefaults() boolForKey:@"__LNPopupBarHideContentView"];
+#endif
+	
+	_contentView.preservesSuperviewLayoutMargins = !isFloating && !isCustom;
+	
+	_contentMaskView.frame = [_contentView convertRect:self.bounds fromView:self];
+	_backgroundMaskView.frame = self.bounds;
 	
 	[self _layoutCustomBarController];
 	
 	[self _layoutImageView];
 	
-	CGFloat swiftuiOffset = __applySwiftUILayoutFixes ? 0 : 0;
-	
-	CGSize toolbarSize = [_toolbar sizeThatFits:CGSizeMake(self.bounds.size.width, CGFLOAT_MAX)];
-	_toolbar.bounds = CGRectMake(0, 0, self.bounds.size.width - swiftuiOffset, toolbarSize.height);
-	_toolbar.center = CGPointMake(_contentView.center.x - swiftuiOffset / 2, _contentView.center.y - 1);
+	_toolbar.bounds = CGRectMake(0, 0, _contentView.bounds.size.width, 44);
+	_toolbar.center = CGPointMake(CGRectGetMidX(_contentView.bounds), CGRectGetMidY(_contentView.bounds));
+	[_toolbar setNeedsLayout];
 	[_toolbar layoutIfNeeded];
 	
-	[_contentView sendSubviewToBack:_interactionBackgroundView];
-	[_contentView insertSubview:_highlightView aboveSubview:_interactionBackgroundView];
-	[_contentView insertSubview:_toolbar aboveSubview:_highlightView];
-	[_contentView insertSubview:_imageView aboveSubview:_toolbar];
-	[_contentView insertSubview:_titlesView aboveSubview:_imageView];
-	[_contentView insertSubview:_shadowView aboveSubview:_titlesView];
-	[_contentView insertSubview:_bottomShadowView aboveSubview:_shadowView];
-	if(_customBarViewController != nil)
+	if(isFloating)
 	{
-		[_contentView insertSubview:_customBarViewController.view aboveSubview:_bottomShadowView];
-	}
-	
-	UIScreen* screen = self.window.screen ?: UIScreen.mainScreen;
-	CGFloat h = 1 / screen.scale;
-	_shadowView.frame = CGRectMake(0, 0, _contentView.bounds.size.width, h);
-	_bottomShadowView.frame = CGRectMake(0, _contentView.bounds.size.height - h, _contentView.bounds.size.width, h);
-	
-	if(self.progressViewStyle == LNPopupBarProgressViewStyleTop)
-	{
-		_progressView.frame = CGRectMake(0, 0, _contentView.bounds.size.width, 1.5);
+		[_contentView.contentView insertSubview:_highlightView belowSubview:_toolbar];
+		_highlightView.frame = _contentView.bounds;
+		_highlightView.layer.cornerRadius = _contentView.cornerRadius;
 	}
 	else
 	{
-		_progressView.frame = CGRectMake(0, _contentView.bounds.size.height - 2.5, _contentView.bounds.size.width, 1.5);
+		[self insertSubview:_highlightView aboveSubview:_backgroundView];
+		_highlightView.frame = self.bounds;
+		_highlightView.layer.cornerRadius = 0;
 	}
 	
+	[_contentView.contentView insertSubview:_imageView aboveSubview:_toolbar];
+	[_contentView.contentView insertSubview:_titlesView aboveSubview:_imageView];
+	
+	UIScreen* screen = self.window.screen ?: UIScreen.mainScreen;
+	CGFloat h = 1 / screen.scale;
+	_shadowView.frame = CGRectMake(0, 0, _backgroundView.bounds.size.width, h);
+	_bottomShadowView.frame = CGRectMake(0, _backgroundView.bounds.size.height - h, _backgroundView.bounds.size.width, h);
+	
+	CGFloat cornerRadius = _contentView.layer.cornerRadius / 2.5;
+	CGFloat width = 0;
+	CGFloat height = 0;
+	CGFloat offset = 0;
+	if(isFloating)
+	{
+		[_contentView.contentView insertSubview:_progressView aboveSubview:_toolbar];
+		width = _contentView.bounds.size.width;
+		height = _contentView.bounds.size.height;
+	}
+	else
+	{
+		[self insertSubview:_progressView aboveSubview:_contentView];
+		
+		offset = self.safeAreaInsets.left;
+		width = self.bounds.size.width - self.safeAreaInsets.left - self.safeAreaInsets.right;
+		height = self.bounds.size.height;
+	}
+	
+	if(self.progressViewStyle == LNPopupBarProgressViewStyleTop)
+	{
+		_progressView.frame = CGRectMake(cornerRadius + offset, 0, width - 2 * cornerRadius, 1.5);
+	}
+	else
+	{
+		_progressView.frame = CGRectMake(cornerRadius + offset, height - 2.5, width - 2 * cornerRadius, 1.5);
+	}
+	
+	
 	[self _layoutTitles];
+	
+	CGFloat titleSpacing = 1 + (1 / MAX(1, screen.scale));
+	if(_resolvedStyle == LNPopupBarStyleCompact)
+	{
+		titleSpacing = 0;
+	}
+	
+	if(UIContentSizeCategoryCompareToCategory(self.traitCollection.preferredContentSizeCategory, UIContentSizeCategoryExtraExtraExtraLarge) != NSOrderedAscending)
+	{
+		CGFloat additionalHeight = 0;
+		static NSDictionary<NSString*, NSNumber*>* additionalHeightMapping = nil;
+		static dispatch_once_t token;
+		dispatch_once(&token, ^{
+			additionalHeightMapping = @{
+				UIContentSizeCategoryExtraSmall : @0,
+				UIContentSizeCategorySmall : @0,
+				UIContentSizeCategoryMedium : @0,
+				UIContentSizeCategoryLarge : @0,
+				UIContentSizeCategoryExtraLarge : @0,
+				UIContentSizeCategoryExtraExtraLarge : @0,
+				UIContentSizeCategoryExtraExtraExtraLarge : @-1.5,
+				UIContentSizeCategoryAccessibilityMedium : @-3,
+				UIContentSizeCategoryAccessibilityLarge : @-5.5,
+				UIContentSizeCategoryAccessibilityExtraLarge : @-7,
+				UIContentSizeCategoryAccessibilityExtraExtraLarge : @-8.5,
+				UIContentSizeCategoryAccessibilityExtraExtraExtraLarge : @-10,
+			};
+		});
+		additionalHeight = [additionalHeightMapping[self.traitCollection.preferredContentSizeCategory] doubleValue];
+		
+		if(_resolvedStyle == LNPopupBarStyleCompact)
+		{
+			additionalHeight = 0.5 * additionalHeight;
+		}
+		
+		titleSpacing += additionalHeight;
+	}
+	
+	_titlesView.spacing = titleSpacing;
+	
+	_inLayout = NO;
+}
+
+- (void)willMoveToWindow:(UIWindow *)newWindow
+{
+	static NSString* willRotate = nil;
+	static NSString* didRotate = nil;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		//UIWindowWillRotateNotification
+		willRotate = _LNPopupDecodeBase64String(@"VUlXaW5kb3dXaWxsUm90YXRlTm90aWZpY2F0aW9u");
+		//UIWindowDidRotateNotification
+		didRotate = _LNPopupDecodeBase64String(@"VUlXaW5kb3dEaWRSb3RhdGVOb3RpZmljYXRpb24=");
+	});
+	
+	if(self.window)
+	{
+		[NSNotificationCenter.defaultCenter removeObserver:self name:willRotate object:self.window];
+		[NSNotificationCenter.defaultCenter removeObserver:self name:didRotate object:self.window];
+	}
+	
+	[super willMoveToWindow:newWindow];
+	
+	if(newWindow)
+	{
+		[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_windowWillRotate:) name:willRotate object:newWindow];
+		[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(_windowDidRotate:) name:didRotate object:newWindow];
+	}
+}
+
+- (void)_windowWillRotate:(NSNotification*)note
+{
+	if([note.userInfo[@"LNPopupIgnore"] boolValue])
+	{
+		return;
+	}
+	
+	[self setWantsBackgroundCutout:NO allowImplicitAnimations:NO];
+}
+
+- (void)_windowDidRotate:(NSNotification*)note
+{
+	if([note.userInfo[@"LNPopupIgnore"] boolValue])
+	{
+		return;
+	}
+	
+	[self setWantsBackgroundCutout:YES allowImplicitAnimations:YES];
 }
 
 - (NSString*)_effectGroupingIdentifierKey
@@ -438,6 +791,16 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)_applyGroupingIdentifier:(NSString*)groupingIdentifier toVisualEffectView:(UIVisualEffectView*)visualEffectView
 {
+	if(visualEffectView == nil)
+	{
+		return;
+	}
+	
+	if([[visualEffectView valueForKey:self._effectGroupingIdentifierKey] isEqualToString:groupingIdentifier])
+	{
+		return;
+	}
+	
 	[visualEffectView setValue:groupingIdentifier ?: [NSString stringWithFormat:@"<%@:%p> Backdrop Group", self.class, self] forKey:self._effectGroupingIdentifierKey];
 }
 
@@ -448,13 +811,12 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (NSString *)effectGroupingIdentifier
 {
-	return [self.backgroundView valueForKey:self._effectGroupingIdentifierKey];
+	return [self.backgroundView.effectView valueForKey:self._effectGroupingIdentifierKey];
 }
 
 - (void)setEffectGroupingIdentifier:(NSString *)groupingIdentifier
 {
-	[self _applyGroupingIdentifier:groupingIdentifier toVisualEffectView:self.backgroundView];
-	[self _applyGroupingIdentifier:groupingIdentifier toVisualEffectView:self.interactionBackgroundView];
+	[self _applyGroupingIdentifier:groupingIdentifier toVisualEffectView:self.backgroundView.effectView];
 	
 	[self._barDelegate _popupBarStyleDidChange:self];
 }
@@ -487,6 +849,11 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)setSystemAppearance:(UIBarAppearance *)systemAppearance
 {
+	if([_systemAppearance isEqual:systemAppearance] == YES)
+	{
+		return;
+	}
+	
 	_systemAppearance = [systemAppearance copy];
 	
 	[self _recalcActiveAppearanceChain];
@@ -494,6 +861,11 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)setStandardAppearance:(LNPopupBarAppearance *)standardAppearance
 {
+	if([_standardAppearance isEqual:standardAppearance] == YES)
+	{
+		return;
+	}
+	
 	_standardAppearance = [standardAppearance copy];
 	if(_standardAppearance == nil)
 	{
@@ -505,11 +877,6 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)_recalcActiveAppearanceChain
 {
-	if(_activeAppearanceChain)
-	{
-		[_activeAppearanceChain setChainDelegate:nil];
-	}
-	
 	NSMutableArray* chain = [NSMutableArray new];
 	
 	if(self.popupItem.standardAppearance != nil)
@@ -524,9 +891,13 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	
 	[chain addObject:self.standardAppearance];
 	
-	if([_activeAppearanceChain.chain isEqualToArray:chain])
+	if([chain isEqualToArray:_activeAppearanceChain.chain])
 	{
 		return;
+	}
+	else if(_activeAppearanceChain)
+	{
+		[_activeAppearanceChain setChainDelegate:nil];
 	}
 	
 	_activeAppearanceChain = [[LNPopupBarAppearanceChainProxy alloc] initWithAppearanceChain:chain];
@@ -550,19 +921,62 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 - (void)_appearanceDidChange
 {
 	_highlightView.backgroundColor = self.activeAppearance.highlightColor;
-	self.backgroundView.effect = self.activeAppearance.backgroundEffect;
-	self.backgroundView.colorView.backgroundColor = self.activeAppearance.backgroundColor;
-	self.backgroundView.imageView.image = self.activeAppearance.backgroundImage;
-	self.backgroundView.imageView.contentMode = self.activeAppearance.backgroundImageContentMode;
+	
+	BOOL isFloating = _resolvedStyle == LNPopupBarStyleFloating;
+	
+	if(isFloating)
+	{
+		id effect = [self.activeAppearance floatingBackgroundEffectForTraitCollection:self.traitCollection];
+		_contentView.effect = effect;
+		
+		__auto_type floatingBackgroundColor = self.activeAppearance.floatingBackgroundColor;
+		__auto_type floatingBackgroundImage = self.activeAppearance.floatingBackgroundImage;
+		
+		_contentView.foregroundColor = floatingBackgroundColor;
+		_contentView.foregroundImage = floatingBackgroundImage;
+		_contentView.foregroundImageContentMode = self.activeAppearance.floatingBackgroundImageContentMode;
+		[_contentView hideOrShowImageViewIfNecessary];
+	}
+	else
+	{
+		_contentView.effect = nil;
+		_contentView.foregroundColor = nil;
+		_contentView.foregroundImage = nil;
+		_contentView.foregroundImageContentMode = 0;
+		[_contentView hideOrShowImageViewIfNecessary];
+	}
+	
+	__auto_type backgroundColor = self.activeAppearance.backgroundColor;
+	__auto_type backgroundImage = self.activeAppearance.backgroundImage;
+	
+	_backgroundView.effect = self.activeAppearance.backgroundEffect;
+	_backgroundView.foregroundColor = backgroundColor;
+	_backgroundView.foregroundImage = backgroundImage;
+	_backgroundView.foregroundImageContentMode = self.activeAppearance.backgroundImageContentMode;
+	[_backgroundView hideOrShowImageViewIfNecessary];
+	
 	_toolbar.standardAppearance.buttonAppearance = self.activeAppearance.buttonAppearance ?: _toolbar.standardAppearance.buttonAppearance;
 	_toolbar.standardAppearance.doneButtonAppearance = self.activeAppearance.doneButtonAppearance ?: _toolbar.standardAppearance.doneButtonAppearance;
+	
+	_shadowView.image = self.activeAppearance.shadowImage;
 	_shadowView.backgroundColor = self.activeAppearance.shadowColor;
+	_bottomShadowView.image = self.activeAppearance.shadowImage;
 	_bottomShadowView.backgroundColor = self.activeAppearance.shadowColor;
+	
+	_shadowView.hidden = _resolvedStyle == LNPopupBarStyleFloating ? YES : NO;
+	if(_resolvedStyle == LNPopupBarStyleFloating)
+	{
+		_bottomShadowView.hidden = YES;
+	}
+	
+	_floatingBackgroundShadowView.shadow = self.activeAppearance.floatingBarBackgroundShadow;
+	
+	_imageView.shadow = self.activeAppearance.imageShadow;
 
 	[self.customBarViewController _activeAppearanceDidChange:self.activeAppearance];
 	
 	//Recalculate labels
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:YES];
 	[self _recalculateCoordinatedMarqueeScrollIfNeeded];
 	
 	[self._barDelegate _popupBarStyleDidChange:self];
@@ -601,14 +1015,14 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 {
 	_attributedTitle = [attributedTitle copy];
 	
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
 }
 
 - (void)setAttributedSubtitle:(NSAttributedString *)attributedSubtitle
 {
 	_attributedSubtitle = [attributedSubtitle copy];
 	
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
 }
 
 - (void)setImage:(UIImage *)image
@@ -616,7 +1030,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	_image = image;
 	
 	[self _layoutImageView];
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
 }
 
 - (void)setSwiftuiImageController:(UIViewController *)swiftuiImageController
@@ -627,71 +1041,104 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	}
 	
 	_swiftuiImageController = swiftuiImageController;
-	_swiftuiImageController.view.backgroundColor = UIColor.clearColor;
-	
-	_swiftuiImageController.view.translatesAutoresizingMaskIntoConstraints = NO;
-	[_imageView addSubview:_swiftuiImageController.view];
-	[NSLayoutConstraint activateConstraints:@[
-		[_imageView.topAnchor constraintEqualToAnchor:_swiftuiImageController.view.topAnchor],
-		[_imageView.bottomAnchor constraintEqualToAnchor:_swiftuiImageController.view.bottomAnchor],
-		[_imageView.leadingAnchor constraintEqualToAnchor:_swiftuiImageController.view.leadingAnchor],
-		[_imageView.trailingAnchor constraintEqualToAnchor:_swiftuiImageController.view.trailingAnchor],
-	]];
+	if(_swiftuiImageController != nil)
+	{
+		_swiftuiImageController.view.backgroundColor = UIColor.clearColor;
+		
+		_swiftuiImageController.view.translatesAutoresizingMaskIntoConstraints = NO;
+		[_imageView addSubview:_swiftuiImageController.view];
+		[NSLayoutConstraint activateConstraints:@[
+			[_imageView.topAnchor constraintEqualToAnchor:_swiftuiImageController.view.topAnchor],
+			[_imageView.bottomAnchor constraintEqualToAnchor:_swiftuiImageController.view.bottomAnchor],
+			[_imageView.leadingAnchor constraintEqualToAnchor:_swiftuiImageController.view.leadingAnchor],
+			[_imageView.trailingAnchor constraintEqualToAnchor:_swiftuiImageController.view.trailingAnchor],
+		]];
+	}
 	
 	[self _layoutImageView];
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
 }
 
-- (void)setSwiftuiTitleController:(UIViewController *)swiftuiTitleController
+- (void)setSwiftuiTitleContentView:(UIView *)swiftuiTitleContentView
 {
-	if(_swiftuiTitleController != nil)
+	if(_swiftuiTitleContentView != nil)
 	{
-		[_swiftuiTitleController.view removeFromSuperview];
+		[_swiftuiTitleContentView removeFromSuperview];
 	}
 	
-	_swiftuiTitleController = swiftuiTitleController;
-	_swiftuiTitleController.view.backgroundColor = UIColor.clearColor;
+	_swiftuiTitleContentView = swiftuiTitleContentView;
+	_swiftuiTitleContentView.backgroundColor = UIColor.clearColor;
+	_swiftuiTitleContentView.translatesAutoresizingMaskIntoConstraints = NO;
 	
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:YES];
 }
 
-- (void)setSwiftuiSubtitleController:(UIViewController *)swiftuiSubtitleController
+- (void)setSwiftuiInheritedFont:(UIFont *)swiftuiInheritedFont
 {
-	if(_swiftuiSubtitleController != nil)
+	if([_swiftuiInheritedFont isEqual:swiftuiInheritedFont])
 	{
-		[_swiftuiSubtitleController.view removeFromSuperview];
+		return;
 	}
 	
-	_swiftuiSubtitleController = swiftuiSubtitleController;
-	_swiftuiSubtitleController.view.backgroundColor = UIColor.clearColor;
+	_swiftuiInheritedFont = swiftuiInheritedFont;
 	
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:YES];
 }
 
 - (void)setSwiftuiHiddenLeadingController:(UIViewController *)swiftuiHiddenLeadingController
 {
+	if(_swiftuiHiddenLeadingController == swiftuiHiddenLeadingController)
+	{
+		return;
+	}
+	
 	if(_swiftuiHiddenLeadingController != nil)
 	{
 		[_swiftuiHiddenLeadingController.view removeFromSuperview];
 	}
 	
 	_swiftuiHiddenLeadingController = swiftuiHiddenLeadingController;
-	_swiftuiHiddenLeadingController.view.frame = CGRectMake(-200, -200, 100, 160);
-	[self addSubview:_swiftuiHiddenLeadingController.view];
+	_swiftuiHiddenLeadingController.view.frame = CGRectMake(0, 0, 400, 400);
+	
+	if(_swiftHacksWindow1 != nil)
+	{
+		_swiftHacksWindow1.hidden = YES;
+		_swiftHacksWindow1 = nil;
+	}
+	_swiftHacksWindow1 = [[UIWindow alloc] initWithWindowScene:self.window.windowScene];
+	_swiftHacksWindow1.frame = CGRectMake(-4000, 0, 400, 400);
+	_swiftHacksWindow1.rootViewController = _swiftuiHiddenLeadingController;
+	_swiftHacksWindow1.hidden = NO;
+	_swiftHacksWindow1.alpha = 0.0;
 	
 	[self _fixupSwiftUIControllersWithBarStyle];
 }
 
 - (void)setSwiftuiHiddenTrailingController:(UIViewController *)swiftuiHiddenTrailingController
 {
+	if(_swiftuiHiddenTrailingController == swiftuiHiddenTrailingController)
+	{
+		return;
+	}
+	
 	if(_swiftuiHiddenTrailingController != nil)
 	{
 		[_swiftuiHiddenTrailingController.view removeFromSuperview];
 	}
 	
 	_swiftuiHiddenTrailingController = swiftuiHiddenTrailingController;
-	_swiftuiHiddenTrailingController.view.frame = CGRectMake(-200, -200, 100, 160);
-	[self addSubview:_swiftuiHiddenTrailingController.view];
+	_swiftuiHiddenTrailingController.view.frame = CGRectMake(0, 0, 400, 400);
+	
+	if(_swiftHacksWindow2 != nil)
+	{
+		_swiftHacksWindow2.hidden = YES;
+		_swiftHacksWindow2 = nil;
+	}
+	_swiftHacksWindow2 = [[UIWindow alloc] initWithWindowScene:self.window.windowScene];
+	_swiftHacksWindow2.frame = CGRectMake(-4000, 0, 400, 400);
+	_swiftHacksWindow2.rootViewController = _swiftuiHiddenTrailingController;
+	_swiftHacksWindow2.hidden = NO;
+	_swiftHacksWindow2.alpha = 0.0;
 	
 	[self _fixupSwiftUIControllersWithBarStyle];
 }
@@ -748,22 +1195,33 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	[self setNeedsLayout];
 }
 
-- (UILabel<__MarqueeLabelType>*)_newMarqueeLabel
+- (UILabel<__MarqueeLabelType>*)_labelWithMarqueeEnabled:(BOOL)marqueeEnabled
 {
-	if(self.activeAppearance.marqueeScrollEnabled == NO)
+	UILabel<__MarqueeLabelType>* _rv = nil;
+	
+	if(!marqueeEnabled)
 	{
-		__FakeMarqueeLabel* rv = [[__FakeMarqueeLabel alloc] initWithFrame:_titlesView.bounds];
+		__FakeMarqueeLabel* rv = [__FakeMarqueeLabel new];
 		rv.minimumScaleFactor = 1.0;
 		rv.lineBreakMode = NSLineBreakByTruncatingTail;
-		return rv;
+		_rv = rv;
 	}
-	MarqueeLabel* rv = [[MarqueeLabel alloc] initWithFrame:_titlesView.bounds rate:self.activeAppearance.marqueeScrollRate andFadeLength:10];
-	rv.leadingBuffer = 0.0;
-	rv.trailingBuffer = 20.0;
-	rv.animationDelay = self.activeAppearance.marqueeScrollDelay;
-	rv.marqueeType = MLContinuous;
-	rv.holdScrolling = YES;
-	return rv;
+	else
+	{
+		MarqueeLabel* rv = [[MarqueeLabel alloc] initWithFrame:CGRectZero rate:self.activeAppearance.marqueeScrollRate andFadeLength:10];
+		rv.leadingBuffer = 0.0;
+		rv.trailingBuffer = 20.0;
+		rv.animationDelay = self.activeAppearance.marqueeScrollDelay;
+		rv.marqueeType = MLContinuous;
+		rv.holdScrolling = YES;
+		_rv = rv;
+	}
+	
+	_rv.numberOfLines = 1;
+	_rv.adjustsFontForContentSizeCategory = YES;
+	_rv.translatesAutoresizingMaskIntoConstraints = NO;
+	[_rv setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+	return _rv;
 }
 
 - (UIView*)_viewForBarButtonItem:(UIBarButtonItem*)barButtonItem
@@ -812,33 +1270,43 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		[self _getLeftmostView:&rightViewFirst rightmostView:NULL fromBarButtonItems:self.leadingBarButtonItems];
 	}
 	
+#if DEBUG
+	if(_LNEnableBarLayoutDebug())
+	{
+		leftViewLast.backgroundColor = UIColor.brownColor;
+		rightViewFirst.backgroundColor = UIColor.purpleColor;
+	}
+#endif
+	
 	[leftViewLast.superview layoutIfNeeded];
 	[rightViewFirst.superview layoutIfNeeded];
+	[_toolbar layoutIfNeeded];
 	
 	CGRect leftViewLastFrame = CGRectZero;
 	if(leftViewLast != nil)
 	{
-		leftViewLastFrame = [self convertRect:leftViewLast.bounds fromView:leftViewLast];
+		leftViewLastFrame = [_toolbar convertRect:leftViewLast.bounds fromView:leftViewLast];
 	}
 	
-	CGRect rightViewFirstFrame = CGRectMake(self.bounds.size.width, 0, 0, 0);
+	CGRect rightViewFirstFrame = CGRectMake(_toolbar.bounds.size.width, 0, 0, 0);
 	if(rightViewFirst != nil)
 	{
-		rightViewFirstFrame = [self convertRect:rightViewFirst.bounds fromView:rightViewFirst];
+		rightViewFirstFrame = [_toolbar convertRect:rightViewFirst.bounds fromView:rightViewFirst];
 	}
 	
 	CGFloat widthLeft = 0;
 	CGFloat widthRight = 0;
 	
 	widthLeft = leftViewLastFrame.origin.x + leftViewLastFrame.size.width;
-	widthRight = self.bounds.size.width - rightViewFirstFrame.origin.x;
+	widthRight = _contentView.bounds.size.width - rightViewFirstFrame.origin.x;
 	
-	widthLeft = MAX(widthLeft, self.layoutMargins.left);
-	widthRight = MAX(widthRight, self.layoutMargins.right);
+//	widthLeft = MAX(widthLeft, self.layoutMargins.left);
+//	widthRight = MAX(widthRight, self.layoutMargins.right);
 	
-	//The added padding is for iOS 10 and below, or for certain conditions where iOS 11 won't put its own padding
-	titleInsets->left = widthLeft;
-	titleInsets->right = widthRight;
+//	titleInsets->left = MAX(widthLeft + 8, widthRight + 8);
+//	titleInsets->right = MAX(widthLeft + 8, widthRight + 8);
+	titleInsets->left = widthLeft + 8;
+	titleInsets->right = widthRight + 8;
 }
 
 - (void)_updateTitleInsetsForProminentBar:(UIEdgeInsets*)titleInsets
@@ -861,60 +1329,154 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		rightViewFirst = _imageView.hidden ? nil : _imageView;
 	}
 	
+#if DEBUG
+	if(_LNEnableBarLayoutDebug())
+	{
+		leftViewLast.backgroundColor = UIColor.brownColor;
+		rightViewFirst.backgroundColor = UIColor.purpleColor;
+	}
+#endif
+	
 	[leftViewLast.superview layoutIfNeeded];
 	[rightViewFirst.superview layoutIfNeeded];
+	
+	BOOL isFloating = _resolvedStyle == LNPopupBarStyleFloating;
+	CGFloat imageToTitlePadding = isFloating ? 8 : 16;
 	
 	CGRect leftViewLastFrame = CGRectZero;
 	if(leftViewLast != nil)
 	{
-		leftViewLastFrame = [self convertRect:leftViewLast.bounds fromView:leftViewLast];
+		leftViewLastFrame = [_contentView convertRect:leftViewLast.bounds fromView:leftViewLast];
 		
 		if(leftViewLast == _imageView)
 		{
-			leftViewLastFrame.size.width += MIN(self.layoutMargins.left, 20);
+			leftViewLastFrame.size.width += imageToTitlePadding;
+		}
+		else
+		{
+			leftViewLastFrame.size.width -= (__applySwiftUILayoutFixes ? -8 : 8);
 		}
 	}
+	else
+	{
+		leftViewLastFrame.size.width += isFloating ? 20 : 8;
+	}
 	
-	CGRect rightViewFirstFrame = CGRectMake(self.bounds.size.width, 0, 0, 0);
+	CGRect rightViewFirstFrame = CGRectMake(_contentView.bounds.size.width, 0, 0, 0);
 	if(rightViewFirst != nil)
 	{
-		rightViewFirstFrame = [self convertRect:rightViewFirst.bounds fromView:rightViewFirst];
+		rightViewFirstFrame = [_contentView convertRect:rightViewFirst.bounds fromView:rightViewFirst];
 		
 		if(rightViewFirst == _imageView)
 		{
-			rightViewFirstFrame.origin.x -= MIN(self.layoutMargins.left, 20);
+			rightViewFirstFrame.origin.x -= imageToTitlePadding;
 		}
+		else
+		{
+			rightViewFirstFrame.origin.x += (__applySwiftUILayoutFixes ? -8 : 8);
+		}
+	}
+	else
+	{
+		rightViewFirstFrame.origin.x -= 20;
 	}
 	
 	CGFloat widthLeft = 0;
 	CGFloat widthRight = 0;
 	
 	widthLeft = leftViewLastFrame.origin.x + leftViewLastFrame.size.width;
-	widthRight = self.bounds.size.width - rightViewFirstFrame.origin.x;
+	widthRight = _contentView.bounds.size.width - rightViewFirstFrame.origin.x;
 	
-	widthLeft = MAX(widthLeft, self.layoutMargins.left);
-	widthRight = MAX(widthRight, self.layoutMargins.right);
+	if(isFloating == NO)
+	{
+		widthLeft = MAX(widthLeft, _contentView.layoutMargins.left);
+		widthRight = MAX(widthRight, _contentView.layoutMargins.right);
+	}
 	
 	//The added padding is for iOS 10 and below, or for certain conditions where iOS 11 won't put its own padding
 	titleInsets->left = widthLeft;
 	titleInsets->right = widthRight;
 }
 
+//DO NOT CHANGE NAME! Used by LNPopupUI
 - (UIFont*)_titleFont
 {
-	return _resolvedStyle == LNPopupBarStyleProminent ? [UIFont systemFontOfSize:18 weight:UIFontWeightRegular] : [UIFont systemFontOfSize:14];
+	if(_swiftuiInheritedFont)
+	{
+		return _swiftuiInheritedFont;
+	}
+	
+	CGFloat fontSize = 15;
+	UIFontWeight fontWeight = UIFontWeightMedium;
+	UIFontTextStyle textStyle = UIFontTextStyleBody;
+	
+	switch(_resolvedStyle)
+	{
+		case LNPopupBarStyleFloating:
+			fontSize = 15;
+			fontWeight = UIFontWeightMedium;
+			textStyle = UIFontTextStyleHeadline;
+			break;
+		case LNPopupBarStyleProminent:
+			fontSize = 15;
+			fontWeight = UIFontWeightMedium;
+			textStyle = UIFontTextStyleBody;
+			break;
+		case LNPopupBarStyleCompact:
+			fontSize = 13.5;
+			fontWeight = UIFontWeightRegular;
+			textStyle = UIFontTextStyleSubheadline;
+			break;
+		default:
+			break;
+	}
+	
+	return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:[UIFont systemFontOfSize:fontSize weight:fontWeight]];
 }
 
+//DO NOT CHANGE NAME! Used by LNPopupUI
 - (UIColor*)_titleColor
 {
 	return UIColor.labelColor;
 }
 
+//DO NOT CHANGE NAME! Used by LNPopupUI
 - (UIFont*)_subtitleFont
 {
-	return _resolvedStyle == LNPopupBarStyleProminent ? [UIFont systemFontOfSize:14 weight:UIFontWeightRegular] : [UIFont systemFontOfSize:11];
+	if(_swiftuiInheritedFont)
+	{
+		return [UIFont fontWithDescriptor:_swiftuiInheritedFont.fontDescriptor size:_swiftuiInheritedFont.pointSize - 2.5];
+	}
+	
+	CGFloat fontSize = 15;
+	UIFontWeight fontWeight = UIFontWeightRegular;
+	UIFontTextStyle textStyle = UIFontTextStyleBody;
+	
+	switch(_resolvedStyle)
+	{
+		case LNPopupBarStyleFloating:
+			fontSize = 12.5;
+			fontWeight = UIFontWeightRegular;
+			textStyle = UIFontTextStyleSubheadline;
+			break;
+		case LNPopupBarStyleProminent:
+			fontSize = 15;
+			fontWeight = UIFontWeightRegular;
+			textStyle = UIFontTextStyleBody;
+			break;
+		case LNPopupBarStyleCompact:
+			fontSize = 12;
+			fontWeight = UIFontWeightRegular;
+			textStyle = UIFontTextStyleSubheadline;
+			break;
+		default:
+			break;
+	}
+	
+	return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:[UIFont systemFontOfSize:fontSize weight:fontWeight]];
 }
 
+//DO NOT CHANGE NAME! Used by LNPopupUI
 - (UIColor*)_subtitleColor
 {
 	return UIColor.secondaryLabelColor;
@@ -924,82 +1486,94 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 {
 	UIEdgeInsets titleInsets = UIEdgeInsetsZero;
 	
-	if(_resolvedStyle == LNPopupBarStyleProminent)
-	{
-		[self _updateTitleInsetsForProminentBar:&titleInsets];
-	}
-	else
+	if(_resolvedStyle == LNPopupBarStyleCompact)
 	{
 		[self _updateTitleInsetsForCompactBar:&titleInsets];
 	}
+	else
+	{
+		[self _updateTitleInsetsForProminentBar:&titleInsets];
+	}
 	
-	titleInsets.left = MAX(titleInsets.left, self.layoutMargins.left);
-	titleInsets.right = MAX(titleInsets.right, self.layoutMargins.right);
+	if([UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.semanticContentAttribute] == UIUserInterfaceLayoutDirectionLeftToRight)
+	{
+		_titlesViewLeadingConstraint.constant = titleInsets.left;
+		_titlesViewTrailingConstraint.constant = titleInsets.right;
+	}
+	else
+	{
+		_titlesViewLeadingConstraint.constant = titleInsets.right;
+		_titlesViewTrailingConstraint.constant = titleInsets.left;
+	}
 	
-	CGRect frame = _titlesView.frame;
-	frame.size.width = self.bounds.size.width - titleInsets.left - titleInsets.right;
-	frame.size.height = _contentView.bounds.size.height;
-	frame.origin.x = titleInsets.left;
+#if DEBUG
+	if(_LNEnableBarLayoutDebug())
+	{
+		_titlesView.backgroundColor = [UIColor.orangeColor colorWithAlphaComponent:0.6];
+	}
+#endif
 	
-	_titlesView.frame = frame;
+	BOOL reset = NO;
 	
 	if(_needsLabelsLayout == YES)
 	{
-		if(_titleLabel == nil)
+		if(_swiftuiTitleContentView != nil)
 		{
-			_titleLabel = [self _newMarqueeLabel];
-			_titleLabel.textColor = self._titleColor;
-			_titleLabel.font = self._titleFont;
-			[_titlesView addSubview:_titleLabel];
-		}
-		
-		BOOL reset = NO;
-		
-		if(_swiftuiTitleController != nil)
-		{
-			_swiftuiTitleController.view.translatesAutoresizingMaskIntoConstraints = NO;
-			[_titleLabel addSubview:_swiftuiTitleController.view];
+			[_titlesView addArrangedSubview:_swiftuiTitleContentView];
+			[_titlesView layoutIfNeeded];
+			UIView* textView = _swiftuiTitleContentView.subviews.firstObject;
 			[NSLayoutConstraint activateConstraints:@[
-				[_titleLabel.topAnchor constraintEqualToAnchor:_swiftuiTitleController.view.topAnchor],
-				[_titleLabel.bottomAnchor constraintEqualToAnchor:_swiftuiTitleController.view.bottomAnchor],
-				[_titleLabel.leadingAnchor constraintEqualToAnchor:_swiftuiTitleController.view.leadingAnchor],
-				[_titleLabel.trailingAnchor constraintEqualToAnchor:_swiftuiTitleController.view.trailingAnchor],
+				[_swiftuiTitleContentView.heightAnchor constraintEqualToAnchor:textView.heightAnchor],
 			]];
-			reset = YES;
 		}
 		else
 		{
+			if(_titleLabel == nil)
+			{
+				_titleLabel = [self _labelWithMarqueeEnabled:self.activeAppearance.marqueeScrollEnabled];
+#if DEBUG
+				if(_LNEnableBarLayoutDebug())
+				{
+					_titleLabel.backgroundColor = [UIColor.redColor colorWithAlphaComponent:0.5];
+				}
+#endif
+				_titleLabel.textColor = self._titleColor;
+				_titleLabel.font = self._titleFont;
+				if(_resolvedStyle == LNPopupBarStyleCompact)
+				{
+					_titleLabel.textAlignment = NSTextAlignmentCenter;
+				}
+				
+				[_titlesView addArrangedSubview:_titleLabel];
+			}
+			
 			NSAttributedString* attr = _attributedTitle.length > 0 ? [NSAttributedString ln_attributedStringWithAttributedString:_attributedTitle defaultAttributes:self.activeAppearance.titleTextAttributes] : nil;
 			if(attr != nil && [_titleLabel.attributedText isEqualToAttributedString:attr] == NO)
 			{
 				_titleLabel.attributedText = attr;
 				reset = YES;
 			}
-		}
-		
-		if(_subtitleLabel == nil)
-		{
-			_subtitleLabel = [self _newMarqueeLabel];
-			_subtitleLabel.textColor = self._subtitleColor;
-			_subtitleLabel.font = self._subtitleFont;
-			[_titlesView addSubview:_subtitleLabel];
-		}
-		
-		if(_swiftuiSubtitleController != nil)
-		{
-			_swiftuiSubtitleController.view.translatesAutoresizingMaskIntoConstraints = NO;
-			[_subtitleLabel addSubview:_swiftuiSubtitleController.view];
-			[NSLayoutConstraint activateConstraints:@[
-				[_subtitleLabel.topAnchor constraintEqualToAnchor:_swiftuiSubtitleController.view.topAnchor],
-				[_subtitleLabel.bottomAnchor constraintEqualToAnchor:_swiftuiSubtitleController.view.bottomAnchor],
-				[_subtitleLabel.leadingAnchor constraintEqualToAnchor:_swiftuiSubtitleController.view.leadingAnchor],
-				[_subtitleLabel.trailingAnchor constraintEqualToAnchor:_swiftuiSubtitleController.view.trailingAnchor],
-			]];
-			reset = YES;
-		}
-		else
-		{
-			NSAttributedString* attr = _attributedSubtitle.length > 0 ? [NSAttributedString ln_attributedStringWithAttributedString:_attributedSubtitle defaultAttributes:self.activeAppearance.subtitleTextAttributes] : nil;
+			
+			if(_subtitleLabel == nil)
+			{
+				_subtitleLabel = [self _labelWithMarqueeEnabled:self.activeAppearance.marqueeScrollEnabled];
+#if DEBUG
+				if(_LNEnableBarLayoutDebug())
+				{
+					_subtitleLabel.backgroundColor = [UIColor.cyanColor colorWithAlphaComponent:0.5];
+				}
+#endif
+				_subtitleLabel.textColor = self._subtitleColor;
+				_subtitleLabel.font = self._subtitleFont;
+				if(_resolvedStyle == LNPopupBarStyleCompact)
+				{
+					_subtitleLabel.textAlignment = NSTextAlignmentCenter;
+				}
+				
+				[_titlesView addArrangedSubview:_subtitleLabel];
+			}
+			
+			attr = _attributedSubtitle.length > 0 ? [NSAttributedString ln_attributedStringWithAttributedString:_attributedSubtitle defaultAttributes:self.activeAppearance.subtitleTextAttributes] : nil;
 			if(attr != nil && [_subtitleLabel.attributedText isEqualToAttributedString:attr] == NO)
 			{
 				_subtitleLabel.attributedText = attr;
@@ -1012,92 +1586,36 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 			[_titleLabel resetLabel];
 			[_subtitleLabel resetLabel];
 		}
-	}
-	
-	CGRect titleLabelFrame = _titlesView.bounds;
-	
-	CGFloat barHeight = _LNPopupBarHeightForBarStyle(_resolvedStyle, _customBarViewController);
-	titleLabelFrame.size.height = barHeight;
-	
-	//Add some padding for compact bar
-	if(_resolvedStyle == LNPopupBarStyleCompact)
-	{
-		titleLabelFrame.origin.x += 8;
-		titleLabelFrame.size.width -= 16;
-	}
-	
-	if(_attributedSubtitle.length > 0 || _swiftuiSubtitleController != nil)
-	{
-		CGRect subtitleLabelFrame = _titlesView.bounds;
-		subtitleLabelFrame.size.height = barHeight;
 		
-		if(_resolvedStyle == LNPopupBarStyleProminent)
+		if(_attributedSubtitle.length > 0)
 		{
-			titleLabelFrame.origin.y -= _titleLabel.font.lineHeight / 2.1;
-			subtitleLabelFrame.origin.y += _subtitleLabel.font.lineHeight / 1.5;
+			_subtitleLabel.hidden = NO;
+			
+			if(_needsLabelsLayout == YES)
+			{
+				if([_subtitleLabel isPaused] && [_titleLabel isPaused] == NO)
+				{
+					[_subtitleLabel unpauseLabel];
+				}
+			}
 		}
 		else
 		{
-			//Add some padding for compact bar
-			subtitleLabelFrame.origin.x += 8;
-			subtitleLabelFrame.size.width -= 16;
+			_subtitleLabel.hidden = YES;
 			
-			titleLabelFrame.origin.y -= _titleLabel.font.lineHeight / 2;
-			subtitleLabelFrame.origin.y += _subtitleLabel.font.lineHeight / 2;
-		}
-		
-		_subtitleLabel.frame = subtitleLabelFrame;
-		_subtitleLabel.hidden = NO;
-		
-		if(_needsLabelsLayout == YES)
-		{
-			if([_subtitleLabel isPaused] && [_titleLabel isPaused] == NO)
+			if(_needsLabelsLayout == YES)
 			{
-				[_subtitleLabel unpauseLabel];
+				[_subtitleLabel resetLabel];
+				[_subtitleLabel pauseLabel];
 			}
 		}
 	}
-	else
-	{
-		if(_needsLabelsLayout == YES)
-		{
-			[_subtitleLabel resetLabel];
-			[_subtitleLabel pauseLabel];
-			_subtitleLabel.hidden = YES;
-		}
-	}
-	
+		
 	[self _updateAccessibility];
-	
-	_titleLabel.frame = titleLabelFrame;
 	
 	[self _recalculateCoordinatedMarqueeScrollIfNeeded];
 	
 	_needsLabelsLayout = NO;
-	
-	if(__applySwiftUILayoutFixes)
-	{
-		// 🤦‍♂️ This code fixes a layout issue with SwiftUI bar button items under certain conditions.
-		dispatch_async(dispatch_get_main_queue(), ^{
-			if(self.swiftuiTitleController)
-			{
-				CGRect frame = self.swiftuiTitleController.view.frame;
-				frame.size.width -= 1;
-				self.swiftuiTitleController.view.frame = frame;
-				frame.size.width += 1;
-				self.swiftuiTitleController.view.frame = frame;
-			}
-			
-			if(self.swiftuiSubtitleController)
-			{
-				CGRect frame = self.swiftuiSubtitleController.view.frame;
-				frame.size.width -= 1;
-				self.swiftuiSubtitleController.view.frame = frame;
-				frame.size.width += 1;
-				self.swiftuiSubtitleController.view.frame = frame;
-			}
-		});
-	}
 }
 
 - (void)_updateAccessibility
@@ -1131,18 +1649,21 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	}
 }
 
-- (void)_setNeedsTitleLayout
+- (void)_setNeedsTitleLayoutRemovingLabels:(BOOL)remove
 {
 	_needsLabelsLayout = YES;
 	
-	UIView* l1 = _titleLabel;
-	UIView* l2 = _subtitleLabel;
-	
-	_titleLabel = nil;
-	_subtitleLabel = nil;
-	
-	[l1 removeFromSuperview];
-	[l2 removeFromSuperview];
+	if(remove)
+	{
+		UIView* l1 = _titleLabel;
+		UIView* l2 = _subtitleLabel;
+		
+		_titleLabel = nil;
+		_subtitleLabel = nil;
+		
+		[l1 removeFromSuperview];
+		[l2 removeFromSuperview];
+	}
 	
 	[self setNeedsLayout];
 }
@@ -1163,22 +1684,25 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	
 	UIUserInterfaceLayoutDirection layoutDirection = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.semanticContentAttribute];
 	
+	BOOL isFloating = _resolvedStyle == LNPopupBarStyleFloating;
+	CGFloat imageSize = isFloating ? LNPopupBarFloatingImageWidth : LNPopupBarProminentImageWidth;
+	CGFloat barHeight = _contentView.bounds.size.height;
+	
+	CGFloat safeLeading = 8;
 	if(layoutDirection == UIUserInterfaceLayoutDirectionLeftToRight)
 	{
-		CGFloat safeLeading = MAX(self.window.safeAreaInsets.left, self.layoutMargins.left);
-		_imageView.center = CGPointMake(safeLeading + LNPopupBarProminentImageWidth / 2, LNPopupBarHeightProminent / 2);
+		_imageView.center = CGPointMake(safeLeading + imageSize / 2, barHeight / 2);
 	}
 	else
 	{
-		CGFloat safeLeading = MAX(self.window.safeAreaInsets.right, self.layoutMargins.right);
-		_imageView.center = CGPointMake(self.bounds.size.width - safeLeading - LNPopupBarProminentImageWidth / 2, LNPopupBarHeightProminent / 2);
+		_imageView.center = CGPointMake(_contentView.bounds.size.width - safeLeading - imageSize / 2, barHeight / 2);
 	}
 	
-	_imageView.bounds = CGRectMake(0, 0, LNPopupBarProminentImageWidth, LNPopupBarProminentImageWidth);
+	_imageView.bounds = CGRectMake(0, 0, imageSize, imageSize);
 	
 	if(previouslyHidden != _imageView.hidden)
 	{
-		[self _setNeedsTitleLayout];
+		[self _setNeedsTitleLayoutRemovingLabels:NO];
 	}
 }
 
@@ -1196,9 +1720,6 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	}
 	else
 	{
-		[_titleLabel restartLabel];
-		[_subtitleLabel restartLabel];
-		
 		[self _recalculateCoordinatedMarqueeScrollIfNeeded];
 	}
 }
@@ -1222,7 +1743,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 	NSMutableArray* items = [NSMutableArray new];
 	
 	UIBarButtonItem* flexibleSpacer = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
-	if(resolvedStyle == LNPopupBarStyleProminent || resolvedStyle == LNPopupBarStyleCustom)
+	if(resolvedStyle != LNPopupBarStyleCompact)
 	{
 		[items addObject:flexibleSpacer];
 	}
@@ -1240,14 +1761,9 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		[items addObject:barButtonItem];
 	}];
 	
-	UIBarButtonItem* fixedSpacer = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:NULL];
-	CGFloat prominentSpacing = __applySwiftUILayoutFixes ? 14 : 0;
-	fixedSpacer.width = _resolvedStyle == LNPopupBarStyleProminent ? prominentSpacing : -2;
-	[items addObject:fixedSpacer];
-	
 	[_toolbar setItems:items animated:__animatesItemSetter];
 	
-	[self _setNeedsTitleLayout];
+	[self _setNeedsTitleLayoutRemovingLabels:NO];
 	
 	_delaysBarButtonItemLayout = NO;
 }
@@ -1255,6 +1771,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 - (void)_updateViewsAfterCustomBarViewControllerUpdate
 {
 	BOOL hide = _customBarViewController != nil;
+	_imageView.hidden = hide;
 	_toolbar.hidden = hide;
 	_titlesView.hidden = hide;
 }
@@ -1302,7 +1819,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		
 		[_customBarViewController _activeAppearanceDidChange:self.activeAppearance];
 		
-		[self.contentView addSubview:_customBarViewController.view];
+		[_contentView.contentView insertSubview:_customBarViewController.view aboveSubview:_bottomShadowView];
 		
 		if(_customBarViewController.view.translatesAutoresizingMaskIntoConstraints == NO)
 		{
@@ -1389,7 +1906,7 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 
 - (void)_transitionCustomBarViewControllerWithPopupContainerSize:(CGSize)size withCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
-	CGSize nextSize = CGSizeMake(size.width, _LNPopupBarHeightForBarStyle(_resolvedStyle, _customBarViewController));
+	CGSize nextSize = CGSizeMake(size.width, _LNPopupBarHeightForPopupBar(self));
 	[self.customBarViewController viewWillTransitionToSize:nextSize withTransitionCoordinator:coordinator];
 }
 
@@ -1478,12 +1995,12 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		return;
 	}
 	
-	[animator addAnimations:^{
-		if(_customBarViewController == nil || _customBarViewController.wantsDefaultHighlightGestureRecognizer == YES)
-		{
+	if(_customBarViewController == nil || _customBarViewController.wantsDefaultHighlightGestureRecognizer == YES)
+	{
+		[animator addAnimations:^{
 			[self setHighlighted:YES animated:YES];
-		}
-	}];
+		}];
+	}
 }
 
 - (void)pointerInteraction:(UIPointerInteraction *)interaction willExitRegion:(UIPointerRegion *)region animator:(id<UIPointerInteractionAnimating>)animator  API_AVAILABLE(ios(13.4))
@@ -1495,142 +2012,24 @@ static inline __attribute__((always_inline)) LNPopupBarProgressViewStyle _LNPopu
 		return;
 	}
 	
-	[animator addAnimations:^{
-		if(_customBarViewController == nil || _customBarViewController.wantsDefaultHighlightGestureRecognizer == YES)
-		{
+	if(_customBarViewController == nil || _customBarViewController.wantsDefaultHighlightGestureRecognizer == YES)
+	{
+		[animator addAnimations:^{
 			[self setHighlighted:NO animated:YES];
-		}
-	}];
+		}];
+	}
 }
 
-@end
+#pragma mark _LNPopupToolbarLayoutDelegate
 
-#pragma mark - Deprecations
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-@implementation LNPopupBar (Deprecated)
-
-- (BOOL)inheritsVisualStyleFromDockingView
+- (void)_toolbarDidLayoutSubviews
 {
-	return self.inheritsAppearanceFromDockingView;
-}
-
-- (void)setInheritsVisualStyleFromDockingView:(BOOL)inheritsVisualStyleFromDockingView
-{
-	self.inheritsAppearanceFromDockingView = inheritsVisualStyleFromDockingView;
-}
-
-- (void)setBackgroundStyle:(UIBlurEffectStyle)backgroundStyle
-{
-	UIBlurEffectStyle blurEffectStyle = backgroundStyle == LNBackgroundStyleInherit ? UIBlurEffectStyleSystemChromeMaterial : backgroundStyle;
+	if(_inLayout)
+	{
+		return;
+	}
 	
-	self.standardAppearance.backgroundEffect = [UIBlurEffect effectWithStyle:blurEffectStyle];
-}
-
-- (UIBlurEffectStyle)backgroundStyle
-{
-	return [[self.standardAppearance.backgroundEffect valueForKey:@"style"] unsignedIntegerValue];
-}
-
-- (void)setBarTintColor:(UIColor *)barTintColor
-{
-	self.standardAppearance.backgroundColor = barTintColor;
-}
-
-- (UIColor *)barTintColor
-{
-	return self.standardAppearance.backgroundColor;
-}
-
-- (void)setTranslucent:(BOOL)translucent
-{
-	if(translucent)
-	{
-		[self.standardAppearance configureWithDefaultBackground];
-	}
-	else
-	{
-		[self.standardAppearance configureWithOpaqueBackground];
-	}
-}
-
-- (BOOL)isTranslucent
-{
-	return self.standardAppearance.backgroundEffect == nil;
-}
-
-- (void)setTitleTextAttributes:(NSDictionary<NSAttributedStringKey,id> *)titleTextAttributes
-{
-	self.standardAppearance.titleTextAttributes = titleTextAttributes;
-}
-
-- (NSDictionary<NSAttributedStringKey,id> *)titleTextAttributes
-{
-	return self.standardAppearance.titleTextAttributes;
-}
-
-- (void)setSubtitleTextAttributes:(NSDictionary<NSAttributedStringKey,id> *)subtitleTextAttributes
-{
-	self.standardAppearance.subtitleTextAttributes = subtitleTextAttributes;
-}
-
-- (NSDictionary<NSAttributedStringKey,id> *)subtitleTextAttributes
-{
-	return self.standardAppearance.subtitleTextAttributes;
-}
-
-- (void)setMarqueeScrollEnabled:(BOOL)marqueeScrollEnabled
-{
-	self.standardAppearance.marqueeScrollEnabled = marqueeScrollEnabled;
-}
-
-- (BOOL)marqueeScrollEnabled
-{
-	return self.standardAppearance.marqueeScrollEnabled;
-}
-
-- (void)setMarqueeScrollRate:(CGFloat)marqueeScrollRate
-{
-	self.standardAppearance.marqueeScrollRate = marqueeScrollRate;
-}
-
-- (CGFloat)marqueeScrollRate
-{
-	return self.standardAppearance.marqueeScrollRate;
-}
-
-- (void)setMarqueeScrollDelay:(NSTimeInterval)marqueeScrollDelay
-{
-	self.standardAppearance.marqueeScrollDelay = marqueeScrollDelay;
-}
-
-- (NSTimeInterval)marqueeScrollDelay
-{
-	return self.standardAppearance.marqueeScrollDelay;
-}
-
-- (void)setCoordinateMarqueeScroll:(BOOL)coordinateMarqueeScroll
-{
-	self.standardAppearance.coordinateMarqueeScroll = coordinateMarqueeScroll;
-}
-
-- (BOOL)coordinateMarqueeScroll
-{
-	return self.standardAppearance.coordinateMarqueeScroll;
-}
-
-- (NSArray<UIBarButtonItem *> *)leftBarButtonItems
-{
-	return self.leadingBarButtonItems;
-}
-
-- (NSArray<UIBarButtonItem *> *)rightBarButtonItems
-{
-	return self.trailingBarButtonItems;
+	[self _layoutTitles];
 }
 
 @end
-
-#pragma clang diagnostic pop

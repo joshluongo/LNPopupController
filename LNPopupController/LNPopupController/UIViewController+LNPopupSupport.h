@@ -14,18 +14,14 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-NS_REFINED_FOR_SWIFT
-/// The default popup snap percent. See `UIViewController.popupSnapPercent` for more information.
-extern const double LNSnapPercentDefault;
+@class UIViewController;
 
-NS_REFINED_FOR_SWIFT
+/// The default popup snap percent. See `UIViewController.popupSnapPercent` for more information.
+extern const double LNSnapPercentDefault NS_REFINED_FOR_SWIFT;
+
 /// Available interaction styles with the popup bar and popup content view.
 typedef NS_ENUM(NSInteger, LNPopupInteractionStyle) {
 	/// The default interaction style for the current environment.
-	///
-	/// On iOS, the default interaction style is snap.
-	///
-	/// On macOS, the default interaction style is scroll.
 	LNPopupInteractionStyleDefault,
 	
 	/// Drag interaction style.
@@ -39,7 +35,7 @@ typedef NS_ENUM(NSInteger, LNPopupInteractionStyle) {
 	
 	/// No interaction
 	LNPopupInteractionStyleNone = 0xFFFF
-};
+} NS_REFINED_FOR_SWIFT NS_SWIFT_NAME(UIViewController.__PopupInteractionStyle);
 
 /// The state of the popup presentation.
 typedef NS_ENUM(NSInteger, LNPopupPresentationState){
@@ -54,8 +50,8 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
 	
 	LNPopupPresentationStateHidden LN_DEPRECATED_API("Use LNPopupPresentationStateBarHidden instead.") = LNPopupPresentationStateBarHidden,
 	LNPopupPresentationStateClosed LN_DEPRECATED_API("Use LNPopupPresentationStateBarPresented instead.") = LNPopupPresentationStateBarPresented,
-	LNPopupPresentationStateTransitioning LN_DEPRECATED_API("Should no longer be used.") = 2,
-};
+	LNPopupPresentationStateTransitioning LN_UNAVAILABLE_API("Should no longer be used.") = 2,
+} NS_SWIFT_NAME(UIViewController.PopupPresentationState);
 
 /// Popup content support for ``UIViewController`` subclasses.
 @interface UIViewController (LNPopupContent)
@@ -217,7 +213,6 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
 @property (nonatomic, readonly) LNPopupPresentationState popupPresentationState;
 
 /// The delegate that handles popup presentation-related messages.
-///
 @property (nonatomic, weak) id<LNPopupPresentationDelegate> popupPresentationDelegate;
 
 /// The content view controller of the receiver. If there is no popover presentation, the property will be @c nil. (read-only)
@@ -225,6 +220,11 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
 
 /// The popup presentation container view controller of the receiver. If the receiver is not part of a popover presentation, the property will be @c nil. (read-only)
 @property (nullable, nonatomic, weak, readonly) __kindof UIViewController* popupPresentationContainerViewController;
+
+/// Controls whether interaction with the popup generates haptic feedback to the user.
+///
+/// Defaults to @c true.
+@property (nonatomic, assign) BOOL allowPopupHapticFeedbackGeneration;
 
 @end
 
@@ -235,7 +235,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
 ///
 /// A default implementation is provided for @c UIViewController, @c UINavigationController and @c UITabBarController.
 ///
-/// The default implmentation for @c UIViewController returns an invisible @c UIView instance, docked to the bottom. For @c UINavigationController, the toolbar is returned. For @c UITabBarController, the tab bar is returned.
+/// The default implementation for @c UIViewController returns an invisible @c UIView instance, docked to the bottom. For @c UINavigationController, the toolbar is returned. For @c UITabBarController, the tab bar is returned.
 @property (nullable, nonatomic, strong, readonly) __kindof UIView* bottomDockingViewForPopupBar;
 
 /// Controls whether the popup bar should fade out during its dismissal animation.
@@ -265,7 +265,7 @@ typedef NS_ENUM(NSInteger, LNPopupPresentationState){
 /// Call this method to update the popup bar appearance (style, tint color, etc.) according to its docking view. You should call this after updating the docking view.
 ///
 /// If the popup bar's @c inheritsAppearanceFromDockingView property is set to @c false, or a custom popup bar view controller is used, this method has no effect. See @c LNPopupBar.inheritsAppearanceFromDockingView and @c LNPopupBar.customBarViewController for more information.
-- (void)updatePopupBarAppearance LN_DEPRECATED_API("Use setNeedsPopupBarAppearanceUpdate instead.");
+- (void)updatePopupBarAppearance LN_UNAVAILABLE_API("Use setNeedsPopupBarAppearanceUpdate instead.");
 
 @end
 
