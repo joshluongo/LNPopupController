@@ -865,7 +865,7 @@ static CGFloat __smoothstep(CGFloat a, CGFloat b, CGFloat x)
 		if(resolvedStyle == LNPopupInteractionStyleDrag || resolvedStyle == LNPopupInteractionStyleScroll)
 		{
 			CGFloat barTransitionPercent = [self _percentFromPopupBar];
-			BOOL hasPassedHeighThreshold = _stateBeforeDismissStarted == LNPopupPresentationStateBarPresented ? barTransitionPercent > LNPopupBarGestureHeightPercentThreshold : barTransitionPercent < (1.0 - LNPopupBarGestureHeightPercentThreshold);
+            BOOL hasPassedHeighThreshold = _stateBeforeDismissStarted == LNPopupPresentationStateBarPresented ? barTransitionPercent > (LNPopupBarGestureHeightPercentThreshold + self.popupContentView.developerPanGestureThreshold) : barTransitionPercent < (1.0 - (LNPopupBarGestureHeightPercentThreshold + self.popupContentView.developerPanGestureThreshold));
 			CGFloat panVelocity = [pgr velocityInView:_containerController.view].y;
 			
 			if(panVelocity < 0)

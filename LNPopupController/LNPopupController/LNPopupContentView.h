@@ -43,11 +43,6 @@ NS_SWIFT_UI_ACTOR
 @property(nonatomic, assign, getter=isTranslucent) BOOL translucent UI_APPEARANCE_SELECTOR;
 
 /**
- * The threshold to start transitioning the popup bar.
- */
-@property (nonatomic) CGFloat gestureHeightPercentThreshold;
-
-/**
  * The threshold required to dismiss by swiping.
  */
 @property (nonatomic) CGFloat developerPanGestureThreshold;
