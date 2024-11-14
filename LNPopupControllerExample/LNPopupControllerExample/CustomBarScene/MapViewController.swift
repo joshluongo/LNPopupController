@@ -2,8 +2,8 @@
 //  MapViewController.swift
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 30/12/2016.
-//  Copyright © 2016 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2016-12-30.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #if LNPOPUP
@@ -111,7 +111,7 @@ class MapViewController: UIViewController, UISearchBarDelegate {
 		popupContentVC = (storyboard!.instantiateViewController(withIdentifier: "PopupContentController") as! LocationsController)
 		popupContentVC.tableView.backgroundColor = .clear
 		
-		presentPopupBar(withContentViewController: self.popupContentVC, animated: animated, completion: nil)
+		presentPopupBar(with: self.popupContentVC, animated: animated, completion: nil)
 #endif
 	}
 	

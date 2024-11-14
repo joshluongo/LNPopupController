@@ -2,8 +2,8 @@
 //  DemoAlbumTableViewController.swift
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 8/7/15.
-//  Copyright © 2015 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2015-08-23.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 import UIKit
@@ -117,7 +117,7 @@ class DemoAlbumTableViewController: UITableViewController {
     }
 
 	override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-		#if LNPOPUP
+#if LNPOPUP
 		let popupContentController = DemoMusicPlayerController()
 		popupContentController.songTitle = titles[(indexPath as NSIndexPath).row]
 		popupContentController.albumTitle = subtitles[(indexPath as NSIndexPath).row]
@@ -126,12 +126,12 @@ class DemoAlbumTableViewController: UITableViewController {
 		popupContentController.popupItem.accessibilityHint = NSLocalizedString("Double Tap to Expand the Mini Player", comment: "")
 		tabBarController?.popupContentView.popupCloseButton.accessibilityLabel = NSLocalizedString("Dismiss Now Playing Screen", comment: "")
 		
-		tabBarController?.presentPopupBar(withContentViewController: popupContentController, animated: true, completion: nil)
+		tabBarController?.presentPopupBar(with: popupContentController, animated: true, completion: nil)
 		tabBarController?.popupBar.imageView.layer.cornerRadius = 3
 		tabBarController?.popupBar.tintColor = UIColor.label
 		tabBarController?.popupBar.progressViewStyle = .top
 		
-		#endif
+#endif
 		
 		tableView.deselectRow(at: indexPath, animated: true)
 	}

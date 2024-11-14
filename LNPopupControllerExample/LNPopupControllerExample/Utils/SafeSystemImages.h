@@ -2,10 +2,23 @@
 //  SafeSystemImages.h
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 01/09/2023.
-//  Copyright © 2023 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2023-09-02.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 @import UIKit;
 
-extern UIImage* LNSystemImage(NSString* named, BOOL useCompactConfig) NS_SWIFT_NAME(LNSystemImage(named:useCompactConfig:));
+NS_ASSUME_NONNULL_BEGIN
+
+typedef NS_ENUM(NSUInteger, LNSystemImageScale) {
+	LNSystemImageScaleCompact,
+	LNSystemImageScaleNormal,
+	LNSystemImageScaleLarge,
+	LNSystemImageScaleLarger
+};
+
+extern UIImage* LNSystemImage(NSString* named, LNSystemImageScale scale) NS_SWIFT_NAME(LNSystemImage(_:scale:));
+extern UIBarButtonItem* LNSystemBarButtonItem(NSString* named, LNSystemImageScale scale, __nullable id target, __nullable SEL action) NS_SWIFT_NAME(LNSystemBarButtonItem(_:scale:target:action:));
+extern UIBarButtonItem* LNSystemBarButtonItemAction(NSString* named, LNSystemImageScale scale, UIAction* primaryAction) NS_SWIFT_NAME(LNSystemBarButtonItem(_:scale:primaryAction:));
+
+NS_ASSUME_NONNULL_END

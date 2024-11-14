@@ -2,8 +2,8 @@
 //  SwiftRefinements.swift
 //  LNPopupController
 //
-//  Created by Leo Natan on 8/2/21.
-//  Copyright © 2015-2021 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2021-08-02.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 import UIKit
@@ -11,7 +11,46 @@ import UIKit
 @_exported import LNPopupController_ObjC
 #endif
 
-extension Double {
+#if canImport(SwiftUI)
+import SwiftUI
+
+@_cdecl("__ln_doNotCall__fixUIHostingViewHitTest")
+@_spi(LNPopupControllerInternal)
+public func __ln_doNotCall__fixUIHostingViewHitTest() {
+	DispatchQueue.main.async {
+		guard let view = UIHostingController(rootView: EmptyView()).view else {
+			return
+		}
+		
+		let cls = type(of: view)
+		let sel = #selector(UIView.hitTest(_:with:))
+		let method = class_getInstanceMethod(cls, sel)!
+		
+		let _orig: @convention(c) (_ self: UIView, _ sel: Selector, _ point: CGPoint, _ event: UIEvent?) -> UIView?
+		_orig = unsafeBitCast(method_getImplementation(method), to: type(of: _orig))
+		
+		let orig: (UIView, CGPoint, UIEvent?) -> UIView? = { _self, point, event in
+			_orig(_self, sel, point, event)
+		}
+		
+		let impl: @convention(block) (UIView, CGPoint, UIEvent?) -> UIView? = { _self, point, event in
+			if let popupContentView = _self.subviews.filter({ $0 is LNPopupContentView }).first, popupContentView.point(inside: popupContentView.convert(point, from: _self), with: event), let popupContentViewHitTest = popupContentView.hitTest(popupContentView.convert(point, from: _self), with: event) {
+				return popupContentViewHitTest
+			}
+			
+			if let popupBar = _self.subviews.filter({ $0 is LNPopupBar }).first, popupBar.point(inside: popupBar.convert(point, from: _self), with: event), let popupBarHitTest = popupBar.hitTest(popupBar.convert(point, from: _self), with: event) {
+				return popupBarHitTest
+			}
+			
+			return orig(_self, point, event)
+		}
+		
+		method_setImplementation(method, imp_implementationWithBlock(impl))
+	}
+}
+#endif
+
+public extension Double {
 	/// The default popup snap percent. See `LNPopupInteractionStyle.customizedSnap(percent:)` for more information.
 	static var defaultPopupSnapPercent: Double {
 		return __LNSnapPercentDefault
@@ -133,5 +172,60 @@ public extension LNPopupBarAppearance {
 		set {
 			__subtitleTextAttributes = newValue != nil ? Dictionary(newValue!) : nil
 		}
+	}
+}
+
+public extension UIViewController {
+	/// Presents an interactive popup bar in the receiver's view hierarchy and optionally opens the popup in the same animation. The popup bar is attached to the receiver's docking view.
+	///
+	/// You may call this method multiple times with different controllers, triggering replacement to the popup content view and update to the popup bar, if popup is open or bar presented, respectively.
+	///
+	/// The provided controller is retained by the system and will be released once a different controller is presented or when the popup bar is dismissed.
+	/// - Parameters:
+	///   - contentViewController: The controller for popup presentation.
+	///   - openPopup: Pass `true` to open the popup in the same animation; otherwise, pass `false`.
+	///   - animated: Pass `true` to animate the presentation; otherwise, pass `false`.
+	///   - completion: The block to execute after the presentation finishes. This block has no return value and takes no parameters. You may specify `nil` for this parameter.
+	func presentPopupBar(with contentViewController: UIViewController, openPopup: Bool = false, animated: Bool, completion: (() -> Void)? = nil) {
+		__presentPopupBar(withContentViewController: contentViewController, openPopup: openPopup, animated: animated, completion: completion)
+	}
+	
+	/// Presents an interactive popup bar in the receiver's view hierarchy and optionally opens the popup in the same animation. The popup bar is attached to the receiver's docking view.
+	///
+	/// You may call this method multiple times with different controllers, triggering replacement to the popup content view and update to the popup bar, if popup is open or bar presented, respectively.
+	///
+	/// The provided controller is retained by the system and will be released once a different controller is presented or when the popup bar is dismissed.
+	/// - Parameters:
+	///   - contentViewController: The controller for popup presentation.
+	///   - openPopup: Pass `true` to open the popup in the same animation; otherwise, pass `false`.
+	///   - animated: Pass `true` to animate the presentation; otherwise, pass `false`.
+	///   - completion: The block to execute after the presentation finishes. This block has no return value and takes no parameters. You may specify `nil` for this parameter.
+	@available(*, deprecated, message: "Use presentPopupBar(with:openPopup:animated:completion:) instead.")
+	func presentPopupBar(withContentViewController contentViewController: UIViewController, openPopup: Bool = false, animated: Bool, completion: (() -> Void)? = nil) {
+		__presentPopupBar(withContentViewController: contentViewController, openPopup: openPopup, animated: animated, completion: completion)
+	}
+	
+	/// Opens the popup, displaying the content view controller's view.
+	/// - Parameters:
+	///   - animated: Pass `true` to animate; otherwise, pass `false`.
+	///   - completion: The block to execute after the popup is opened. This block has no return value and takes no parameters. You may specify `nil` for this parameter.
+	func openPopup(animated: Bool, completion: (() -> Void)? = nil) {
+		__openPopup(animated: animated, completion: completion)
+	}
+	
+	/// Closes the popup, hiding the content view controller's view.
+	/// - Parameters:
+	///   - animated: Pass `true` to animate; otherwise, pass `false`.
+	///   - completion: The block to execute after the popup is closed. This block has no return value and takes no parameters. You may specify `nil` for this parameter.
+	func closePopup(animated: Bool, completion: (() -> Void)? = nil) {
+		__closePopup(animated: animated, completion: completion)
+	}
+	
+	/// Dismisses the popup presentation, closing the popup if open and dismissing the popup bar.
+	/// - Parameters:
+	///   - animated: Pass `true` to animate; otherwise, pass `false`.
+	///   - completion: The block to execute after the dismissal. This block has no return value and takes no parameters. You may specify `nil` for this parameter.
+	func dismissPopupBar(animated: Bool, completion: (() -> Void)? = nil) {
+		__dismissPopupBar(animated: animated, completion: completion)
 	}
 }

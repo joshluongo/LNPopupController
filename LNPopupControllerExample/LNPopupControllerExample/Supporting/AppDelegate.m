@@ -2,8 +2,8 @@
 //  AppDelegate.m
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 7/16/15.
-//  Copyright © 2015 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2015-08-23.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #import "AppDelegate.h"
@@ -38,8 +38,13 @@
 - (NSString *)_hebrew_localizedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName
 {
 	NSString* stringToTransliterate = value.length > 0 ? value : key;
+	stringToTransliterate = [stringToTransliterate stringByReplacingOccurrencesOfString:@"LNPopupController" withString:@"אֶלְאֶנפּוֹפּאָפְּקוֹנְטְרוֹלֶר"];
+	stringToTransliterate = [stringToTransliterate stringByReplacingOccurrencesOfString:@"Controller" withString:@"קוֹנְטְרוֹלֶר"];
+	stringToTransliterate = [[stringToTransliterate stringByReplacingOccurrencesOfString:@"ll" withString:@"l"] stringByReplacingOccurrencesOfString:@"tt" withString:@"t"];
 	
-	return [stringToTransliterate stringByApplyingTransform:@"Latin-Hebrew" reverse:NO];
+	NSString* rv = [stringToTransliterate stringByApplyingTransform:NSStringTransformLatinToHebrew reverse:NO];
+	
+	return rv;
 }
 
 + (void)load

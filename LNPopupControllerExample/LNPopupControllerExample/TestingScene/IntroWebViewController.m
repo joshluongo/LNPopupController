@@ -2,8 +2,8 @@
 //  IntroWebViewController.m
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 10/28/20.
-//  Copyright © 2020 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2020-10-28.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #import "IntroWebViewController.h"
@@ -58,9 +58,9 @@
 		[self.view.trailingAnchor constraintEqualToAnchor:_topColorView.trailingAnchor],
 	]];
 	
-	self.popupItem.image = [UIImage imageNamed:@"AppIcon60x60"];
+	self.popupItem.image = [UIImage imageNamed:@"AppIconPopupBar"];
 	self.popupItem.barButtonItems = @[
-		[[UIBarButtonItem alloc] initWithImage:LNSystemImage(@"suit.heart.fill", NO) style:UIBarButtonItemStylePlain target:self action:@selector(_navigate:)],
+		[[UIBarButtonItem alloc] initWithImage:LNSystemImage(@"suit.heart.fill", LNSystemImageScaleNormal) style:UIBarButtonItemStylePlain target:self action:@selector(_navigate:)],
 	];
 	
 	NSString* title = NSLocalizedString(@"Welcome to LNPopupController!", @"");

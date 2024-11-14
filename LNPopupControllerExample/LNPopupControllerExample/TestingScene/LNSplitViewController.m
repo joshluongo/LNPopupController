@@ -2,8 +2,8 @@
 //  LNSplitViewController.m
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 8/21/19.
-//  Copyright © 2019 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2023-10-23.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #import "LNSplitViewController.h"
@@ -14,13 +14,16 @@
 {
 	[super viewDidLoad];
 	
-	self.minimumPrimaryColumnWidth = 400;
-	self.maximumPrimaryColumnWidth = 400;
-	
-	if(self.style == UISplitViewControllerStyleTripleColumn)
+	if([self isKindOfClass:LNSplitViewControllerSecondaryPopup.class] == NO)
 	{
-		self.minimumSupplementaryColumnWidth = 400;
-		self.maximumSupplementaryColumnWidth = 400;
+		self.minimumPrimaryColumnWidth = 400;
+		self.maximumPrimaryColumnWidth = 400;
+		
+		if(self.style == UISplitViewControllerStyleTripleColumn)
+		{
+			self.minimumSupplementaryColumnWidth = 400;
+			self.maximumSupplementaryColumnWidth = 400;
+		}
 	}
 }
 

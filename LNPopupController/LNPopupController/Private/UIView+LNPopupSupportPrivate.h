@@ -2,8 +2,8 @@
 //  UIView+LNPopupSupportPrivate.h
 //  LNPopupController
 //
-//  Created by Leo Natan on 8/1/20.
-//  Copyright © 2015-2021 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2020-08-01.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -21,6 +21,8 @@ typedef void (^LNInWindowBlock)(dispatch_block_t);
 
 @end
 
+UIEdgeInsets _LNEdgeInsetsFromDirectionalEdgeInsets(UIView* forView, NSDirectionalEdgeInsets edgeInsets);
+
 @interface UIView (LNPopupSupportPrivate)
 
 - (void)_ln_triggerBarAppearanceRefreshIfNeededTriggeringLayout:(BOOL)layout;
@@ -30,11 +32,19 @@ typedef void (^LNInWindowBlock)(dispatch_block_t);
 - (void)_ln_forgetAboutIt;
 - (nullable NSString*)_ln_effectGroupingIdentifierIfAvailable;
 
+- (void)_ln_freezeInsets;
+
 @end
 
 @interface UIView ()
 
 - (id)_lnpopup_scrollEdgeAppearance;
+
+@end
+
+@interface UITabBar ()
+
+@property (nonatomic, getter=_ignoringLayoutDuringTransition, setter=_setIgnoringLayoutDuringTransition:) BOOL ignoringLayoutDuringTransition;
 
 @end
 
@@ -49,3 +59,12 @@ typedef void (^LNInWindowBlock)(dispatch_block_t);
 #endif
 
 NS_ASSUME_NONNULL_END
+
+@interface UIScrollView (LNPopupSupportPrivate)
+
+- (BOOL)_ln_hasHorizontalContent;
+- (BOOL)_ln_hasVerticalContent;
+- (BOOL)_ln_scrollingOnlyVertically;
+- (BOOL)_ln_isAtTop;
+
+@end

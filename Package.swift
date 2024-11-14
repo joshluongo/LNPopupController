@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.9
 
 import PackageDescription
 
@@ -35,5 +35,5 @@ let package = Package(
 			dependencies: ["LNPopupController-ObjC"],
 			path: "LNPCSwiftRefinements")
 	],
-	cxxLanguageStandard: CXXLanguageStandard(rawValue: "gnu++17")
+	cxxLanguageStandard: .gnucxx20
 )

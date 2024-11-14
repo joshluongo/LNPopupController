@@ -2,12 +2,13 @@
 //  DemoViewController.m
 //  LNPopupControllerExample
 //
-//  Created by Leo Natan on 7/16/15.
-//  Copyright © 2015 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2015-08-23.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #if LNPOPUP
 @import LNPopupController;
+#import <LNPopupController/LNPopupController-Swift.h>
 #endif
 #import "DemoViewController.h"
 #import "DemoPopupContentViewController.h"
@@ -20,6 +21,12 @@
 #import "LNPopupDemoContextMenuInteraction.h"
 #import "LNPopupControllerExample-Bridging-Header.h"
 @import UIKit;
+
+@interface UIImage ()
+
++ (instancetype)_systemImageNamed:(NSString*)arg1;
+
+@end
 
 @interface DemoView : UIView @end
 
@@ -53,11 +60,24 @@
 	__weak IBOutlet UIButton *_nextButton;
 	
 	__weak IBOutlet UIBarButtonItem *_barStyleButton;
+	__weak IBOutlet UIBarButtonItem *_hideTabBarButton;
+	
+	__weak IBOutlet UIButton* _showPopupBarButton;
+	__weak IBOutlet UIButton* _hidePopupBarButton;
+	
 	BOOL _alreadyPresentedAutomatically;
 }
 
 - (UITabBarItem *)tabBarItem
 {
+	if(@available(iOS 18.0, *))
+	{
+		if(self.tab != nil)
+		{
+			return super.tabBarItem;
+		}
+	}
+	
 	if(self.tabBarController != nil)
 	{
 		UIViewController* target = self;
@@ -66,30 +86,54 @@
 			target = self.navigationController;
 		}
 		
+		//This is safe even with the UITab API, because this will be accessed very early on, when loaded from storyboard.
 		super.tabBarItem.image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%lu.square.fill", [self.tabBarController.viewControllers indexOfObject:target] + 1]];
 	}
 	
 	return super.tabBarItem;
 }
 
+- (UITab *)tab API_AVAILABLE(ios(18.0))
+{
+	if([self.parentViewController isKindOfClass:UINavigationController.class])
+	{
+		return self.parentViewController.tab;
+	}
+	
+	return super.tab;
+}
+
+- (NSUInteger)tabIndexInAncestorTabBarController
+{
+	if(@available(iOS 18, *))
+	{
+		return [self.tabBarController.tabs indexOfObject:self.tab];
+	}
+	else
+	{
+		return [self.tabBarController.viewControllers indexOfObject:self.navigationController ?: self];
+	}
+}
+
 - (void)viewDidLoad
 {
 	[super viewDidLoad];
+	
+	[self updateNavigationBarTitlePositionForTraitCollection:self.traitCollection];
 	
 	if(self.colorSeedString == nil)
 	{
 		if(self.splitViewController != nil)
 		{
-			self.colorSeedString = [NSString stringWithFormat:@"%@", @(arc4random())];
+			UIViewController* indexTarget = self.tabBarController ?: self.navigationController ?: self;
+			NSInteger idx = 1 - [self.splitViewController.viewControllers indexOfObject:indexTarget];
+			
+			self.colorSeedString = [NSString stringWithFormat:@"split_%@_%@%@ccolors", NSStringFromClass(self.splitViewController.class), @(idx), @(idx)];
 		}
 		else if(self.tabBarController != nil)
 		{
-			NSUInteger tabIdx = [self.tabBarController.viewControllers indexOfObject:self.navigationController ?: self];
+			NSUInteger tabIdx = self.tabIndexInAncestorTabBarController;
 			self.colorSeedString = [NSString stringWithFormat:@"tab_%@", @(tabIdx)];
-		}
-		else if(self.navigationController != nil)
-		{
-			self.colorSeedString = [NSString stringWithFormat:@"tab_109"];
 		}
 		else
 		{
@@ -108,11 +152,32 @@
 		self.view.backgroundColor = UIColor.systemBackgroundColor;
 	}
 	
-//	UIViewController* settings = [[UIStoryboard storyboardWithName:@"Settings" bundle:nil] instantiateViewControllerWithIdentifier:@"SettingsView"];
+	[self updateHideTabBarButtonHiddenStateForTraitCollection:self.traitCollection];
+	
+//	UIViewController* settings = [self.storyboard instantiateViewControllerWithIdentifier:@"Settings"];
 //	[self addChildViewController:settings];
 //	[self.view insertSubview:settings.view atIndex:0];
 //	settings.view.frame = self.view.bounds;
 //	[settings didMoveToParentViewController:self];
+}
+
+- (void)updateNavigationBarTitlePositionForTraitCollection:(UITraitCollection*)traitCollection
+{
+	if (@available(iOS 18.0, *))
+	{
+		if(self.tabBarController == nil || UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad || traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
+		{
+			_hideTabBarButton.image = [UIImage systemImageNamed:@"dock.rectangle"];
+			self.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeGeneric;
+			self.navigationItem.style = UINavigationItemStyleNavigator;
+		}
+		else
+		{
+			_hideTabBarButton.image = [UIImage _systemImageNamed:@"rectangle.line.horizontal.inset.top"];
+			self.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeMinimal;
+			self.navigationItem.style = UINavigationItemStyleEditor;
+		}
+	}
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -165,6 +230,63 @@
 - (void)viewDidDisappear:(BOOL)animated
 {
 	[super viewDidDisappear:animated];
+}
+
+- (void)updateHideTabBarButtonHiddenStateForTraitCollection:(UITraitCollection*)traitCollection;
+{
+	if(@available(iOS 18.0, *))
+	{
+		if(traitCollection == nil)
+		{
+			traitCollection = self.traitCollection;
+		}
+		
+		if(self.tabBarController != nil)
+		{
+			[self.navigationItem setHidesBackButton:self.tabBarController.sidebar.isHidden == NO];
+		}
+		
+		BOOL isFirst = [self.navigationController.viewControllers indexOfObject:self] == 0;
+		BOOL isTNil = self.tabBarController == nil;
+		BOOL isNNil = self.navigationController == nil;
+		BOOL canHaveSidebar = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular;
+		BOOL isSidebarHidden = self.tabBarController.sidebar.isHidden;
+		
+		_hideTabBarButton.hidden = isFirst == NO || (isTNil && isNNil) || (canHaveSidebar && isSidebarHidden == NO);
+	}
+	else
+	{
+		if (@available(iOS 16.0, *))
+		{
+			_hideTabBarButton.hidden = self.navigationController == nil || self.tabBarController != nil;
+		}
+		else
+		{
+			_hideTabBarButton.enabled = self.navigationController == nil || self.tabBarController != nil;
+		}
+	}
+}
+
+- (void)viewWillLayoutSubviews
+{
+	[super viewWillLayoutSubviews];
+	
+	if(@available(iOS 18.0, *))
+	{
+		if(self.tabBarController != nil)
+		{
+			[self updateHideTabBarButtonHiddenStateForTraitCollection:self.traitCollection];
+		}
+	}
+}
+
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+	[super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+	
+	[coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+		[self updateNavigationBarTitlePositionForTraitCollection:newCollection];
+	} completion:nil];
 }
 
 - (void)dealloc
@@ -242,8 +364,28 @@
 
 - (UIViewController*)_targetVCForPopup
 {
+	void (^block)(NSString*) = ^ (NSString* title) {
+		self->_hideTabBarButton.enabled = NO;
+		if (@available(iOS 16.0, *))
+		{
+			self->_hideTabBarButton.hidden = YES;
+		}
+		self->_showPopupBarButton.hidden = YES;
+		self->_hidePopupBarButton.hidden = YES;
+		[self.navigationController setToolbarHidden:YES animated:NO];
+		
+		if (@available(iOS 17.0, *))
+		{
+			UIContentUnavailableConfiguration* config = [UIContentUnavailableConfiguration emptyConfiguration];
+			config.text = title;
+			[self setContentUnavailableConfiguration:config];
+		}
+	};
+	
 	if([self.splitViewController isKindOfClass:LNSplitViewControllerPrimaryPopup.class] && self.navigationController != [self.splitViewController viewControllerForColumn:UISplitViewControllerColumnPrimary])
 	{
+		self.view.backgroundColor = UIColor.systemBackgroundColor;
+		block(NSLocalizedString(@"Secondary", @""));
 		return nil;
 	}
 	
@@ -254,11 +396,9 @@
 	}
 	if([self.splitViewController isKindOfClass:LNSplitViewControllerSecondaryPopup.class] && [vcs containsObject:[self.splitViewController viewControllerForColumn:UISplitViewControllerColumnPrimary]])
 	{
-		return nil;
-	}
-	
-	if([self.splitViewController isKindOfClass:LNSplitViewControllerSecondaryPopup.class] && [vcs containsObject:[self.splitViewController viewControllerForColumn:UISplitViewControllerColumnSupplementary]])
-	{
+		self.view.backgroundColor = UIColor.secondarySystemBackgroundColor;
+		block(NSLocalizedString(@"Sidebar", @""));
+		
 		return nil;
 	}
 	
@@ -317,7 +457,35 @@
 		return;
 	}
 	
-	UIViewController* demoVC = [DemoPopupContentViewController new];
+	UIViewController* demoVC;
+	
+	switch([NSUserDefaults.settingDefaults integerForKey:PopupSettingUseScrollingPopupContent])
+	{
+		case 10:
+		case 11:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingColors"];
+			break;
+		
+		case 20:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"VerticalPagedScrollingColors"];
+			break;
+		case 21:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"HorizontalPagedScrollingColors"];
+			break;
+		case 22:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"VerticalGroupedPagedScrollingColors"];
+			break;
+		case 23:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"HorizontalGroupedPagedScrollingColors"];
+			break;
+			
+		case 100:
+			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingMap"];
+			break;
+		default:
+			demoVC = [DemoPopupContentViewController new];
+			break;
+	}
 	
 	LNPopupCloseButtonStyle closeButtonStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingCloseButtonStyle] unsignedIntegerValue];
 	
@@ -331,6 +499,8 @@
 	targetVC.popupContentView.popupCloseButtonStyle = closeButtonStyle;
 	
 	targetVC.allowPopupHapticFeedbackGeneration = [NSUserDefaults.settingDefaults boolForKey:PopupSettingHapticFeedbackEnabled];
+	
+	targetVC.popupBar.limitFloatingContentWidth = [NSUserDefaults.settingDefaults boolForKey:PopupSettingLimitFloatingWidth];
 	
 	NSNumber* effectOverride = [NSUserDefaults.settingDefaults objectForKey:PopupSettingVisualEffectViewBlurEffect];
 	if(effectOverride != nil && effectOverride.unsignedIntValue != 0xffff)
@@ -418,6 +588,23 @@
 	{
 		[(DemoViewController*)segue.destinationViewController setColorSeedString:self.colorSeedString];
 		[(DemoViewController*)segue.destinationViewController setColorSeedCount:self.colorSeedCount + 1];
+	}
+}
+
+- (IBAction)_hideBottomBar:(id)sender
+{
+	if(self.tabBarController != nil)
+	{
+		if(@available(iOS 18.0, *))
+		{
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 180000
+			[self.tabBarController setTabBarHidden:!self.tabBarController.isTabBarHidden animated:YES];
+#endif
+		}
+	}
+	else if(self.navigationController != nil)
+	{
+		[self.navigationController setToolbarHidden:!self.navigationController.isToolbarHidden animated:YES];
 	}
 }
 

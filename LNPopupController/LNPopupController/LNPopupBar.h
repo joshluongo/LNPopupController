@@ -2,8 +2,8 @@
 //  LNPopupBar.h
 //  LNPopupController
 //
-//  Created by Leo Natan on 7/24/15.
-//  Copyright © 2015-2021 Leo Natan. All rights reserved.
+//  Created by Léo Natan on 2015-08-23.
+//  Copyright © 2015-2024 Léo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -82,6 +82,11 @@ NS_SWIFT_UI_ACTOR
 ///
 /// Use this property's value to determine, at runtime, what the result of `LNPopupBarStyleDefault` is.
 @property (nonatomic, assign, readonly) LNPopupBarStyle effectiveBarStyle;
+
+/// In wide enough environments, such as iPadOS, limit the width of content of floating bars to a system-determined value.
+///
+/// Defaults to `true`.
+@property (nonatomic, assign) BOOL limitFloatingContentWidth;
 
 /// Describes the appearance attributes for the popup bar to use.
 @property (nonatomic, copy, null_resettable) LNPopupBarAppearance* standardAppearance UI_APPEARANCE_SELECTOR;
