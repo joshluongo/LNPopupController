@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2023-08-30.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #if ! LNPopupControllerEnforceStrictClean
@@ -127,7 +127,7 @@ return super_class(&super, _cmd); \
 			}
 			
 			rv = [rv replicate];
-			LNDynamicallySubclass(rv, _LNPopupBarBackgroundDataSubclass.class);
+			LNDynamicSubclass(rv, _LNPopupBarBackgroundDataSubclass.class);
 			[rv setValue:_self->_shadowColorHandler forKey:@"_ln_shadowColorHandler"];
 			
 			return rv;

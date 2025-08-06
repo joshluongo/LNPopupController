@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "UIViewController+LNPopupSupportPrivate.h"
@@ -155,7 +155,6 @@ extern void __ln_doNotCall__fixUIHostingViewHitTest(void);
 CF_EXTERN_C_END
 #endif
 
-@interface UIViewController (LNPopupLayout) @end
 @implementation UIViewController (LNPopupLayout)
 
 + (void)load
@@ -213,18 +212,6 @@ CF_EXTERN_C_END
 			LNSwizzleMethod(self,
 							@selector(setNeedsUpdateOfHomeIndicatorAutoHidden),
 							@selector(_ln_setNeedsUpdateOfHomeIndicatorAutoHidden));
-			
-			LNSwizzleMethod(self,
-							@selector(childViewControllerForStatusBarStyle),
-							@selector(_ln_childViewControllerForStatusBarStyle));
-			
-			LNSwizzleMethod(self,
-							@selector(childViewControllerForStatusBarHidden),
-							@selector(_ln_childViewControllerForStatusBarHidden));
-			
-			LNSwizzleMethod(self,
-							@selector(childViewControllerForHomeIndicatorAutoHidden),
-							@selector(_ln_childViewControllerForHomeIndicatorAutoHidden));
 			
 			LNSwizzleMethod(self,
 							@selector(viewWillTransitionToSize:withTransitionCoordinator:),
@@ -299,6 +286,22 @@ CF_EXTERN_C_END
 {
 	static NSString* key = LNPopupHiddenString("_isFromSwiftUI");
 	return [self.class respondsToSelector:NSSelectorFromString(key)] && [[self.class valueForKey:key] boolValue];
+}
+
+- (BOOL)_ln_shouldPopupContentAnyFadeForTransition
+{
+	BOOL bottomBarIsVisible = [self.bottomDockingViewForPopup_internalOrDeveloper isKindOfClass:_LNPopupBottomBarSupport.class] == NO && self.ln_popupController.bottomBar.hidden == NO && self.ln_popupController.bottomBar.window != nil;
+	
+	return self.popupBar.window.safeAreaInsets.bottom != 0 || bottomBarIsVisible;
+}
+
+- (BOOL)_ln_shouldPopupContentViewFadeForTransition
+{
+	BOOL bottomBarExtensionIsVisible = self._ln_bottomBarExtension_nocreate != nil && self._ln_bottomBarExtension_nocreate.isHidden == NO && self._ln_bottomBarExtension_nocreate.alpha > 0 && self._ln_bottomBarExtension_nocreate.frame.size.height > 0;
+	
+	BOOL bottomBarIsVisible = [self.bottomDockingViewForPopup_internalOrDeveloper isKindOfClass:_LNPopupBottomBarSupport.class] == NO && self.ln_popupController.bottomBar.hidden == NO && self.ln_popupController.bottomBar.window != nil;
+	
+	return bottomBarExtensionIsVisible == NO && bottomBarIsVisible == NO;
 }
 
 - (void)_ln_popup_setOverrideUserInterfaceStyle:(UIUserInterfaceStyle)overrideUserInterfaceStyle
@@ -475,21 +478,6 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 	}
 }
 
-- (UIViewController*)_findAncestorParentPopupContainerController
-{
-	if(self._ln_popupController_nocreate)
-	{
-		return self;
-	}
-	
-	if(self.parentViewController == nil)
-	{
-		return nil;
-	}
-	
-	return [self.parentViewController _findAncestorParentPopupContainerController];
-}
-
 - (UIViewController*)_findChildInPopupPresentation
 {
 	if(self._ln_popupController_nocreate)
@@ -510,7 +498,7 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 	return vc;
 }
 
-- (nullable UIViewController *)_common_childViewControllersForStatusBarLogic
+- (nullable UIViewController *)_ln_childViewControllerForStatusBarLogic
 {
 	UIViewController* vcToCheckForPopupPresentation = self;
 	if([self isKindOfClass:[UISplitViewController class]])
@@ -532,42 +520,6 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 	}
 	
 	return nil;
-}
-
-- (nullable UIViewController *)_ln_common_childViewControllerForStatusBarHidden
-{
-	UIViewController* vc = [self _common_childViewControllersForStatusBarLogic];
-	
-	return vc ?: [self _ln_childViewControllerForStatusBarHidden];
-}
-
-- (nullable UIViewController *)_ln_common_childViewControllerForStatusBarStyle
-{
-	UIViewController* vc = [self _common_childViewControllersForStatusBarLogic];
-	
-	return vc ?: [self _ln_childViewControllerForStatusBarStyle];
-}
-
-- (nullable UIViewController *)_ln_common_childViewControllerForHomeIndicatorAutoHidden
-{
-	UIViewController* vc = [self _common_childViewControllersForStatusBarLogic];
-	
-	return vc ?: [self _ln_childViewControllerForHomeIndicatorAutoHidden];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarHidden
-{
-	return [self _ln_common_childViewControllerForStatusBarHidden];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarStyle
-{
-	return [self _ln_common_childViewControllerForStatusBarStyle];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForHomeIndicatorAutoHidden
-{
-	return [self _ln_common_childViewControllerForHomeIndicatorAutoHidden];
 }
 
 - (void)_ln_setPopupPresentationState:(LNPopupPresentationState)newState
@@ -658,19 +610,22 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 		setContentMarginFunc(self, setContentMarginSEL, contentMargin);
 	}
 	
-#if ! TARGET_OS_MACCATALYST
-	if(self.popupContentViewController)
+	if(LNPopupBar.isCatalystApp && self.popupContentViewController)
 	{
 		[self.popupContentViewController _uLFSBAIO];
 		[self._ln_popupController_nocreate.popupContentView _repositionPopupCloseButton];
 	}
-#endif
 }
 
 
 //_viewSafeAreaInsetsFromScene (iOS 14)
 - (UIEdgeInsets)_vSAIFS
 {
+	if([self respondsToSelector:@selector(_ln_popupUIRequiresZeroInsets)] && self._ln_popupUIRequiresZeroInsets == YES)
+	{
+		return UIEdgeInsetsZero;
+	}
+	
 	if([self _isContainedInPopupController])
 	{
 		return __LNEdgeInsetsSum(self.popupPresentationContainerViewController.view.safeAreaInsets, UIEdgeInsetsMake(0, 0, - _LNPopupSafeAreaInsets(self.popupPresentationContainerViewController).bottom, 0));
@@ -718,7 +673,7 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 		[parentForPopupBar insertSubview:popupBar belowSubview:bottomBar];
 	}
 	[parentForPopupBar insertSubview:self._ln_bottomBarExtension_nocreate belowSubview:popupBar];
-	[parentForPopupBar insertSubview:self._ln_popupController_nocreate.popupContentView belowSubview:popupBar];
+	[parentForPopupBar insertSubview:self._ln_popupController_nocreate.popupContentView aboveSubview:popupBar];
 }
 
 - (_LNPopupBarBackgroundView*)_ln_bottomBarExtension_nocreate
@@ -823,7 +778,22 @@ UIEdgeInsets _LNPopupChildAdditiveSafeAreas(id self)
 		
 		if(self._ln_popupController_nocreate.popupControllerInternalState != LNPopupPresentationStateBarHidden)
 		{
-			UIEdgeInsets neededInsets = UIEdgeInsetsMake(0, 0, MAX(0, self.popupBar.frame.size.height - [self _ln_popupOffsetForPopupBarStyle:self.popupBar.resolvedStyle]), 0);
+			CGFloat offset = [self _ln_popupOffsetForPopupBarStyle:self.popupBar.resolvedStyle];
+			CGFloat realHeight = _LNPopupBarHeightForPopupBar(self.popupBar);
+			CGFloat barHeightToUse;
+			
+			if((self._ln_popupController_nocreate.popupControllerPublicState == LNPopupPresentationStateBarPresented && self._ln_popupController_nocreate.popupControllerTargetState >= self._ln_popupController_nocreate.popupControllerPublicState) || self._ln_popupController_nocreate.popupControllerPublicState == LNPopupPresentationStateOpen)
+			{
+				//Use real bar height and offset
+				barHeightToUse = realHeight - offset;
+			}
+			else
+			{
+				//Use frame size and relative offset for animating popup bar presentation/dismiss.
+				barHeightToUse = self.popupBar.frame.size.height - (self.popupBar.frame.size.height / realHeight) * offset;
+			}
+			
+			UIEdgeInsets neededInsets = UIEdgeInsetsMake(0, 0, MAX(0, barHeightToUse), 0);
 			
 			UIEdgeInsets safe = _LNPopupSafeAreaInsets(self);
 			UIEdgeInsets childAdditive = _LNPopupChildAdditiveSafeAreas(self);
@@ -1086,7 +1056,12 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 
 - (CGFloat)_ln_popupOffsetForPopupBarStyle:(LNPopupBarStyle)barStyle
 {
-	return self._isTabBarHiddenDuringTransition ? [super _ln_popupOffsetForPopupBarStyle:barStyle] : 0;
+	if(self._isTabBarHiddenDuringTransition)
+	{
+		return [super _ln_popupOffsetForPopupBarStyle:barStyle];
+	}
+	
+	return 0.0;
 }
 
 - (CGRect)defaultFrameForBottomDockingView
@@ -1100,18 +1075,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 {
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForStatusBarStyle),
-						@selector(_ln_childViewControllerForStatusBarStyle));
-		
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForStatusBarHidden),
-						@selector(_ln_childViewControllerForStatusBarHidden));
-		
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForHomeIndicatorAutoHidden),
-						@selector(_ln_childViewControllerForHomeIndicatorAutoHidden));
-		
 		LNSwizzleMethod(self,
 						@selector(viewDidLayoutSubviews),
 						@selector(_ln_popup_viewDidLayoutSubviews_tvc));
@@ -1258,7 +1221,8 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 {
 	CGRect defaultFrame = [self defaultFrameForBottomDockingView];
 	CGRect frame = self._ln_popupController_nocreate.popupBar.frame;
-	frame.origin.y = defaultFrame.origin.y - frame.size.height - self.insetsForBottomDockingView.bottom;
+	CGFloat offset = [self _ln_popupOffsetForPopupBarStyle:self._ln_popupController_nocreate.popupBar.resolvedStyle];
+	frame.origin.y = defaultFrame.origin.y - frame.size.height - self.insetsForBottomDockingView.bottom + offset;
 	self._ln_popupController_nocreate.popupBar.frame = frame;
 }
 
@@ -1388,8 +1352,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 	
 	[self._ln_popupController_nocreate.popupBar _cancelGestureRecognizers];
 	
-	[self _setTabBarHiddenDuringTransition:YES];
-	
 	CGRect frame = self.tabBar.frame;
 	if(transition == 1)
 	{
@@ -1418,9 +1380,23 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 	}
 	
 	NSString* effectGroupingIdentifier = self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier;
+	NSString* traitOverride = nil;
+	
+	if(@available(iOS 17.0, *))
+	{
+		traitOverride = [self._ln_popupController_nocreate.bottomBar.traitCollection objectForTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+	}
+	
 	if(transition == 1)
 	{
-		self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = nil;
+		if(@available(iOS 17.0, *))
+		{
+			[self._ln_popupController_nocreate.bottomBar.traitOverrides setObject:nil forTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+		}
+		else
+		{
+			self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = nil;
+		}
 	}
 	else
 	{
@@ -1446,6 +1422,13 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 	self._ln_bottomBarExtension_nocreate.alpha = 1.0;
 	
 	void (^animations)(id<UIViewControllerTransitionCoordinatorContext>) = ^ (id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+		[self._ln_popupController_nocreate _popupBarMetricsDidChange:self._ln_popupController_nocreate.popupBar shouldLayout:NO];
+		//During the transition, animate the popup bar and content together with the tab bar transition.
+		[self._ln_popupController_nocreate _setContentToState:self._ln_popupController_nocreate.popupControllerInternalState];
+		[self _setTabBarHiddenDuringTransition:YES];
+		
+		CGFloat barOffset = [self _ln_popupOffsetForPopupBarStyle:self._ln_popupController_nocreate.popupBar.resolvedStyle];
+		
 		if(transition != 1)
 		{
 			[self _ln_updateSafeAreaInsets];
@@ -1468,12 +1451,12 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 			
 			if(transition == 1)
 			{
-				self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, (isRTL ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea);
+				self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, (isRTL ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea - barOffset);
 				self._ln_popupController_nocreate.popupBar.backgroundView.transitionShadingView.alpha = 1.0;
 			}
 			else
 			{
-				self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea);
+				self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea - barOffset);
 				self._ln_popupController_nocreate.popupBar.backgroundView.alpha = 0.0;
 			}
 		}
@@ -1502,7 +1485,14 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 		self._ln_popupController_nocreate.popupBar.bottomShadowView.hidden = YES;
 		self._ln_popupController_nocreate.popupBar.bottomShadowView.alpha = 1.0;
 		
-		self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = effectGroupingIdentifier;
+		if(@available(iOS 17.0, *))
+		{
+			[self._ln_popupController_nocreate.bottomBar.traitOverrides setObject:traitOverride forTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+		}
+		else
+		{
+			self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = effectGroupingIdentifier;
+		}
 		
 		self._ln_popupController_nocreate.popupBar.backgroundView.frame = backgroundViewFrame;
 		
@@ -1554,6 +1544,8 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 	}
 	__ln_alreadyInHideShowBar = NO;
 	
+	CGFloat laterBarOffset = [self _ln_popupOffsetForPopupBarStyle:self._ln_popupController_nocreate.popupBar.resolvedStyle];
+	
 	if(isExplicit == NO)
 	{
 		return;
@@ -1593,27 +1585,44 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 		self._ln_popupController_nocreate.popupBar.backgroundView.transitionShadingView.alpha = 1.0;
 		self._ln_popupController_nocreate.popupBar.backgroundView.transitionShadingView.hidden = NO;
 		
-		CGRect initial = CGRectOffset(backgroundViewFrame, (isRTL ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea);
+		CGRect initial = CGRectOffset(backgroundViewFrame, (isRTL ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea - laterBarOffset);
 		
 		self._ln_popupController_nocreate.popupBar.backgroundView.frame = initial;
 	}
 	else if(isFloating)
 	{
-		self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea);
+		self._ln_popupController_nocreate.popupBar.backgroundView.frame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea - laterBarOffset);
 	}
 	
 	[self _setIgnoringLayoutDuringTransition:YES];
 	
 	NSString* effectGroupingIdentifier = self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier;
+	NSString* traitOverride = nil;
+	
+	if(@available(iOS 17.0, *))
+	{
+		traitOverride = [self._ln_popupController_nocreate.bottomBar.traitCollection objectForTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+	}
+	
 	if(transition == 2)
 	{
-		self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = nil;
+		if(@available(iOS 17.0, *))
+		{
+			[self._ln_popupController_nocreate.bottomBar.traitOverrides setObject:nil forTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+		}
+		else
+		{
+			self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = nil;
+		}
 	}
 	
 	void (^animations)(id<UIViewControllerTransitionCoordinatorContext>) = ^ (id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+		[self _setTabBarHiddenDuringTransition:NO];
+		
 		if(transition != 2)
 		{
 			[self _ln_updateSafeAreaInsets];
+			[self.view setNeedsLayout];
 			[self.view layoutIfNeeded];
 		}
 		
@@ -1641,14 +1650,16 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 			}
 		}
 		
-		[self _setTabBarHiddenDuringTransition:NO];
 		[self _layoutPopupBarOrderForTransition];
 		[self __repositionPopupBarToClosed_hack];
+		
+		[self._ln_popupController_nocreate _popupBarMetricsDidChange:self._ln_popupController_nocreate.popupBar shouldLayout:NO];
+		//During the transition, animate the popup bar and content together with the tab bar transition.
+		[self._ln_popupController_nocreate _setContentToState:self._ln_popupController_nocreate.popupControllerInternalState];
 	};
 	
 	void (^completion)(id<UIViewControllerTransitionCoordinatorContext>) = ^ (id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
-		[self _setPrepareTabBarIgnored:NO];
-		
+		[self _setPrepareTabBarIgnored:NO];	
 		[self._ln_popupController_nocreate.popupBar setWantsBackgroundCutout:YES allowImplicitAnimations:YES];
 		
 		if(transition == 2 && isFloating)
@@ -1677,7 +1688,14 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 		
 		[self _setIgnoringLayoutDuringTransition:NO];
 		
-		self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = effectGroupingIdentifier;
+		if(@available(iOS 17.0, *))
+		{
+			[self._ln_popupController_nocreate.bottomBar.traitOverrides setObject:traitOverride forTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+		}
+		else
+		{
+			self._ln_popupController_nocreate.popupBar.effectGroupingIdentifier = effectGroupingIdentifier;
+		}
 		
 		if(context.isCancelled == NO)
 		{
@@ -1714,21 +1732,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 }
 
 #endif
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarHidden
-{
-	return [self _ln_common_childViewControllerForStatusBarHidden];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarStyle
-{
-	return [self _ln_common_childViewControllerForStatusBarStyle];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForHomeIndicatorAutoHidden
-{
-	return [self _ln_common_childViewControllerForHomeIndicatorAutoHidden];
-}
 
 @end
 
@@ -1767,11 +1770,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 	}
 	toolbarBarFrame.origin = CGPointMake(toolbarBarFrame.origin.x, self.view.bounds.size.height - (self.isToolbarHidden ? 0.0 : toolbarBarFrame.size.height) - bottomSafeAreaHeight);
 	
-	return toolbarBarFrame;
-}
-
-- (UIEdgeInsets)insetsForBottomDockingView
-{
 	if(@available(iOS 18.0, *))
 	{
 		CGFloat offset = 0;
@@ -1782,39 +1780,30 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 			if([[self.toolbar valueForKeyPath:key] CGRectValue].size.height < (self.toolbar.bounds.size.height + self.view.safeAreaInsets.bottom))
 			{
 				//Something in UIKit reports safe area insets incorrectly on iPadOS. This is a workaround for this issue.
-				offset -= 5;
+				offset = 5.0;
 			}
 		}
 		
-		return UIEdgeInsetsMake(0, 0, self.view.safeAreaInsets.bottom + offset, 0);
+		toolbarBarFrame.origin.y += offset;
 	}
-	else
+	
+	return toolbarBarFrame;
+}
+
+- (UIEdgeInsets)insetsForBottomDockingView
+{
+	if(self.presentingViewController != nil && [NSStringFromClass(self.nonMemoryLeakingPresentationController.class) containsString:@"Preview"])
 	{
-		if(self.presentingViewController != nil && [NSStringFromClass(self.nonMemoryLeakingPresentationController.class) containsString:@"Preview"])
-		{
-			return UIEdgeInsetsZero;
-		}
-		
-		return UIEdgeInsetsMake(0, 0, MAX(self.view.superview.safeAreaInsets.bottom, self.view.window.safeAreaInsets.bottom), 0);
+		return UIEdgeInsetsZero;
 	}
+	
+	return UIEdgeInsetsMake(0, 0, MAX(self.view.superview.safeAreaInsets.bottom, self.view.window.safeAreaInsets.bottom), 0);
 }
 
 + (void)load
 {
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForStatusBarStyle),
-						@selector(_ln_childViewControllerForStatusBarStyle));
-		
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForStatusBarHidden),
-						@selector(_ln_childViewControllerForStatusBarHidden));
-		
-		LNSwizzleMethod(self,
-						@selector(childViewControllerForHomeIndicatorAutoHidden),
-						@selector(_ln_childViewControllerForHomeIndicatorAutoHidden));
-		
 		LNSwizzleMethod(self,
 						@selector(setNavigationBarHidden:animated:),
 						@selector(_ln_setNavigationBarHidden:animated:));
@@ -1994,6 +1983,8 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 		[self _setIgnoringLayoutDuringTransition:YES];
 	}
 	
+	CGFloat earlyBarOffset = [self _ln_popupOffsetForPopupBarStyle:self._ln_popupController_nocreate.popupBar.resolvedStyle];
+	
 	__ln_hideBarEdge = edge;
 	__ln_alreadyInHideShowBar = YES;
 	//Trigger the toolbar hide or show transition.
@@ -2022,27 +2013,29 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 		CGRect initialBackgroundViewFrame;
 		CGRect targetBackgroundViewFrame;
 		
+		CGFloat laterBarOffset = [self _ln_popupOffsetForPopupBarStyle:self._ln_popupController_nocreate.popupBar.resolvedStyle];
+		
 		if(edge == UIRectEdgeBottom)
 		{
 			if(hidden == YES)
 			{
 				initialBackgroundViewFrame = backgroundViewFrame;
-				targetBackgroundViewFrame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea);
+				targetBackgroundViewFrame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea - laterBarOffset);
 			}
 			else
 			{
-				initialBackgroundViewFrame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea);
+				initialBackgroundViewFrame = CGRectOffset(backgroundViewFrame, 0, bottomSafeArea - earlyBarOffset);
 				targetBackgroundViewFrame = backgroundViewFrame;
 			}
 		}
 		else if(hidden == YES)
 		{
 			initialBackgroundViewFrame = backgroundViewFrame;
-			targetBackgroundViewFrame = CGRectOffset(backgroundViewFrame, (edge == UIRectEdgeRight ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea);
+			targetBackgroundViewFrame = CGRectOffset(backgroundViewFrame, (edge == UIRectEdgeRight ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea - laterBarOffset);
 		}
 		else
 		{
-			initialBackgroundViewFrame = CGRectOffset(backgroundViewFrame, (edge == UIRectEdgeRight ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea);
+			initialBackgroundViewFrame = CGRectOffset(backgroundViewFrame, (edge == UIRectEdgeRight ? 1 : -1) * CGRectGetWidth(backgroundViewFrame), -CGRectGetHeight(frame) + bottomSafeArea - earlyBarOffset);
 			targetBackgroundViewFrame = backgroundViewFrame;
 		}
 		
@@ -2168,21 +2161,6 @@ void _LNPopupSupportSetPopupInsetsForViewController(UIViewController* controller
 }
 
 #endif
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarHidden
-{
-	return [self _ln_common_childViewControllerForStatusBarHidden];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForStatusBarStyle
-{
-	return [self _ln_common_childViewControllerForStatusBarStyle];
-}
-
-- (nullable UIViewController *)_ln_childViewControllerForHomeIndicatorAutoHidden
-{
-	return [self _ln_common_childViewControllerForHomeIndicatorAutoHidden];
-}
 
 - (void)_ln_setNavigationBarHidden:(BOOL)hidden animated:(BOOL)animated
 {

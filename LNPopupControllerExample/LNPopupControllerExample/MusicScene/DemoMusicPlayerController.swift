@@ -3,7 +3,7 @@
 //  LNPopupControllerExample
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #if LNPOPUP
@@ -11,15 +11,35 @@ import UIKit
 import SwiftUI
 import LNPopupController
 
-fileprivate struct BlurView: UIViewRepresentable {
-	var style: UIBlurEffect.Style = .systemMaterial
-	func makeUIView(context: Context) -> UIVisualEffectView {
-		let rv = UIVisualEffectView(effect: UIBlurEffect(style: style))
+fileprivate struct BackgroundView: UIViewRepresentable {
+	func makeUIView(context: Context) -> UIView {
+		let rv = UIView()
 		rv.tag = 666
 		return rv
 	}
-	func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-		uiView.effect = UIBlurEffect(style: style)
+	func updateUIView(_ uiView: UIView, context: Context) {
+	}
+}
+
+fileprivate struct PopupTransitionImage: UIViewRepresentable {
+	let uiImage: UIImage
+	
+	func makeUIView(context: Context) -> LNPopupImageView {
+		let rv = LNPopupImageView()
+		rv.image = uiImage
+		rv.cornerRadius = 30.0
+		
+		let shadow = NSShadow()
+		shadow.shadowOffset = .zero
+		shadow.shadowColor = UIColor.black.withAlphaComponent(0.5)
+		shadow.shadowBlurRadius = 10.0
+		rv.shadow = shadow
+
+		return rv
+	}
+	
+	func updateUIView(_ uiView: LNPopupImageView, context: Context) {
+		uiView.image = uiImage
 	}
 }
 
@@ -42,13 +62,10 @@ struct PlayerView: View {
 	var body: some View {
 		GeometryReader { geometry in
 			return VStack {
-				Image(uiImage: playbackSettings.albumArt)
-					.resizable()
-					.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-					.aspectRatio(contentMode: .fit)
+				PopupTransitionImage(uiImage: playbackSettings.albumArt)
+					.aspectRatio(1.0, contentMode: .fit)
 					.padding([.leading, .trailing], 10)
 					.padding([.top], geometry.size.height * 60 / 896.0)
-					.shadow(radius: 5)
 				VStack(spacing: geometry.size.height * 30.0 / 896.0) {
 					HStack {
 						VStack(alignment: .leading) {
@@ -120,14 +137,17 @@ struct PlayerView: View {
 				   minHeight: 0,
 				   maxHeight: .infinity,
 				   alignment: .top)
-			.background({
+			.background {
 				ZStack {
-					Image(uiImage: playbackSettings.albumArt)
-						.resizable()
-					BlurView()
-				}
-				.edgesIgnoringSafeArea(.all)
-			}())
+					ZStack {
+						Image(uiImage: playbackSettings.albumArt)
+							.resizable()
+						Color(uiColor: .systemBackground)
+							.opacity(0.4)
+					}.compositingGroup().blur(radius: 90, opaque: true)
+					BackgroundView()
+				}.edgesIgnoringSafeArea(.all)
+			}
 		}
 	}
 }
@@ -138,15 +158,15 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 	var popupCloseButton: LNPopupCloseButton?
 	
 	lazy var vibrancyView : UIVisualEffectView = {
-		let blur = self.view.viewWithTag(666) as! UIVisualEffectView
-		let rv = UIVisualEffectView(effect: UIVibrancyEffect(blurEffect: blur.effect as! UIBlurEffect, style: .separator))
+		let background = self.view.viewWithTag(666)!
+		let rv = UIVisualEffectView(effect: UIVibrancyEffect(blurEffect: UIBlurEffect(style: .systemMaterial), style: .separator))
 		rv.translatesAutoresizingMaskIntoConstraints = false
-		blur.contentView.addSubview(rv)
+		background.addSubview(rv)
 		NSLayoutConstraint.activate([
-			rv.leadingAnchor.constraint(equalTo: blur.safeAreaLayoutGuide.leadingAnchor),
-			rv.trailingAnchor.constraint(equalTo: blur.safeAreaLayoutGuide.trailingAnchor),
-			rv.topAnchor.constraint(equalTo: blur.safeAreaLayoutGuide.topAnchor),
-			rv.bottomAnchor.constraint(equalTo: blur.safeAreaLayoutGuide.bottomAnchor)
+			rv.leadingAnchor.constraint(equalTo: background.safeAreaLayoutGuide.leadingAnchor),
+			rv.trailingAnchor.constraint(equalTo: background.safeAreaLayoutGuide.trailingAnchor),
+			rv.topAnchor.constraint(equalTo: background.safeAreaLayoutGuide.topAnchor),
+			rv.bottomAnchor.constraint(equalTo: background.safeAreaLayoutGuide.bottomAnchor)
 		])
 		
 		return rv
@@ -165,7 +185,7 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 			self.updateBarItems(with: self.traitCollection)
 		}
 		
-		timer = Timer(timeInterval: 0.01, target: self, selector: #selector(DemoMusicPlayerController._timerTicked(_:)), userInfo: nil, repeats: true)
+		timer = Timer(timeInterval: 0.02, target: self, selector: #selector(DemoMusicPlayerController._timerTicked(_:)), userInfo: nil, repeats: true)
 		RunLoop.current.add(timer!, forMode: .common)
 		
 		accessibilityDateComponentsFormatter.unitsStyle = .spellOut
@@ -260,6 +280,26 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 		super.viewDidLoad()
 		
 		updateBarItems(with: traitCollection)
+	}
+	
+	override func viewWillAppear(_ animated: Bool) {
+		super.viewWillAppear(animated)
+		
+		UIView.performWithoutAnimation {
+			view.alpha = 0.0
+		}
+		
+		view.alpha = 1.0
+	}
+	
+	override func viewWillDisappear(_ animated: Bool) {
+		super.viewWillDisappear(animated)
+		
+		UIView.performWithoutAnimation {
+			view.alpha = 1.0
+		}
+		
+		view.alpha = 0.0
 	}
 	
 	override func viewDidLayoutSubviews() {

@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2020-08-04.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "LNPopupController.h"
@@ -16,11 +16,14 @@ LNPopupCloseButtonStyle _LNPopupResolveCloseButtonStyleFromCloseButtonStyle(LNPo
 	LNPopupCloseButtonStyle rv = style;
 	if(rv == LNPopupCloseButtonStyleDefault)
 	{
-#if TARGET_OS_MACCATALYST
-		rv = LNPopupCloseButtonStyleRound;
-#else
-		rv = LNPopupCloseButtonStyleGrabber;
-#endif
+		if([LNPopupBar isCatalystApp])
+		{
+			rv =  LNPopupCloseButtonStyleRound;
+		}
+		else
+		{
+			rv = LNPopupCloseButtonStyleGrabber;
+		}
 	}
 	return rv;
 }
@@ -54,7 +57,7 @@ LNPopupCloseButtonStyle _LNPopupResolveCloseButtonStyleFromCloseButtonStyle(LNPo
 		_popupCloseButton.popupContentView = self;
 		
 		__weak __typeof(self) weakSelf = self;
-		if (@available(iOS 13.4, *))
+		if(@available(iOS 13.4, *))
 		{
 			_popupCloseButton.pointerInteractionEnabled = YES;
 			_popupCloseButton.pointerStyleProvider = ^ UIPointerStyle* (UIButton *button, UIPointerEffect *proposedEffect, UIPointerShape *proposedShape) {
@@ -219,6 +222,10 @@ LNPopupCloseButtonStyle _LNPopupResolveCloseButtonStyleFromCloseButtonStyle(LNPo
 	topConstant += layoutFrame.origin.y;
 	topConstant = MAX(self.popupCloseButton.style == LNPopupCloseButtonStyleRound ? 12 : 0, topConstant);
 	
+#if TARGET_OS_MACCATALYST
+	topConstant += 20;
+#endif
+	
 	CGFloat leadingConstant = layoutFrame.origin.x;
 	
 	if(topConstant != _popupCloseButtonTopConstraint.constant || leadingConstant != _popupCloseButtonLeadingConstraint.constant)
@@ -249,10 +256,14 @@ LNPopupCloseButtonStyle _LNPopupResolveCloseButtonStyleFromCloseButtonStyle(LNPo
 	}
 }
 
+#if DEBUG
+
 - (void)safeAreaInsetsDidChange
 {
 	[super safeAreaInsetsDidChange];
 }
+
+#endif
 
 - (UIUserInterfaceStyle)overrideUserInterfaceStyle
 {

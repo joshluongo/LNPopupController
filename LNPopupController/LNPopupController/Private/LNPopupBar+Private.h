@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import <LNPopupController/LNPopupBar.h>
@@ -12,6 +12,7 @@
 #import "_LNPopupBarBackgroundView.h"
 #import "_LNPopupBackgroundShadowView.h"
 #import "_LNPopupBarBackgroundMaskView.h"
+#import "MarqueeLabel.h"
 
 CF_EXTERN_C_BEGIN
 
@@ -138,8 +139,69 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 - (void)_cancelAnyUserInteraction;
 
++ (BOOL)isCatalystApp;
 - (BOOL)isWidePad;
 
 @end
+
+@protocol _LNPopupToolbarLayoutDelegate <NSObject>
+
+- (void)_toolbarDidLayoutSubviews;
+
+@end
+
+@interface LNPopupBar () <_LNPopupToolbarLayoutDelegate>
+
+- (void)_windowWillRotate:(NSNotification*)note;
+- (void)_windowDidRotate:(NSNotification*)note;
+- (UIFont*)_titleFont;
+- (UIColor*)_titleColor;
+- (UIFont*)_subtitleFont;
+- (UIColor*)_subtitleColor;
+
+@end
+
+@protocol LNMarqueeLabel <NSObject>
+
+- (void)resetLabel;
+- (void)unpauseLabel;
+- (void)pauseLabel;
+- (void)restartLabel;
+- (BOOL)isPaused;
+- (void)shutdownLabel;
+
+@property (nonatomic, assign) CGFloat rate;
+@property (nonatomic, assign) CGFloat animationDelay;
+@property (nonatomic, weak) MarqueeLabel* synchronizedLabel;
+@property (nonatomic, readonly) NSTimeInterval animationDuration;
+@property (nonatomic, assign) BOOL holdScrolling;
+
+@end
+
+@interface _LNPopupBarContentView : _LNPopupBarBackgroundView @end
+
+@interface _LNPopupBarTitlesView : UIStackView @end
+
+@interface _LNPopupToolbar : UIToolbar
+
+@property (nonatomic, weak) id<_LNPopupToolbarLayoutDelegate> _layoutDelegate;
+
+@end
+
+@interface _LNPopupTitleLabelWrapper: UIView
+
++ (instancetype)wrapperForLabel:(UILabel*)wrapped;
+
+@property (nonatomic, strong) UILabel* wrapped;
+@property (nonatomic, strong) NSLayoutConstraint* wrappedWidthConstraint;
+
+@end
+
+@interface _LNPopupBarShadowView : UIImageView @end
+
+@interface LNNonMarqueeLabel : UILabel <LNMarqueeLabel> @end
+
+@interface MarqueeLabel () <LNMarqueeLabel> @end
+
 
 CF_EXTERN_C_END

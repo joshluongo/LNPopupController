@@ -3,7 +3,7 @@
 //  LNPopupControllerExample
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #if LNPOPUP
@@ -163,7 +163,7 @@
 
 - (void)updateNavigationBarTitlePositionForTraitCollection:(UITraitCollection*)traitCollection
 {
-	if (@available(iOS 18.0, *))
+	if(@available(iOS 18.0, *))
 	{
 		if(self.tabBarController == nil || UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad || traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
 		{
@@ -252,11 +252,11 @@
 		BOOL canHaveSidebar = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular;
 		BOOL isSidebarHidden = self.tabBarController.sidebar.isHidden;
 		
-		_hideTabBarButton.hidden = isFirst == NO || (isTNil && isNNil) || (canHaveSidebar && isSidebarHidden == NO);
+		_hideTabBarButton.hidden = isFirst == NO || isNNil || (!isTNil && canHaveSidebar && isSidebarHidden == NO);
 	}
 	else
 	{
-		if (@available(iOS 16.0, *))
+		if(@available(iOS 16.0, *))
 		{
 			_hideTabBarButton.hidden = self.navigationController == nil || self.tabBarController != nil;
 		}
@@ -324,12 +324,22 @@
 	if(popupBarStyle == LNPopupBarStyleFloating || (popupBarStyle == LNPopupBarStyleDefault && NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 17))
 #endif
 	{
-		UIBlurEffect* effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+		UIBlurEffectStyle style;
+		if(NSProcessInfo.processInfo.isMacCatalystApp || NSProcessInfo.processInfo.isiOSAppOnMac)
+		{
+			style = UIBlurEffectStyleSystemThickMaterial;
+		}
+		else
+		{
+			style = UIBlurEffectStyleSystemThinMaterial;
+		}
+		
+		UIBlurEffect* effect = [UIBlurEffect effectWithStyle:style];
 		
 #if LNPOPUP
 		nba.backgroundEffect = effect;
-		
 #endif
+		
 		UITabBarAppearance* tba = [UITabBarAppearance new];
 		[tba configureWithDefaultBackground];
 		tba.backgroundEffect = effect;
@@ -345,7 +355,6 @@
 	self.navigationController.navigationBar.compactScrollEdgeAppearance = nba;
 	
 	UITabBarAppearance* tba = nil;
-	
 	if(disableScrollEdgeAppearance)
 	{
 		tba = [[UITabBarAppearance alloc] initWithBarAppearance:nba];
@@ -353,7 +362,6 @@
 	self.tabBarController.tabBar.scrollEdgeAppearance = tba;
 	
 	UIToolbarAppearance* ta = nil;
-	
 	if(disableScrollEdgeAppearance)
 	{
 		ta = [[UIToolbarAppearance alloc] initWithBarAppearance:nba];
@@ -366,7 +374,7 @@
 {
 	void (^block)(NSString*) = ^ (NSString* title) {
 		self->_hideTabBarButton.enabled = NO;
-		if (@available(iOS 16.0, *))
+		if(@available(iOS 16.0, *))
 		{
 			self->_hideTabBarButton.hidden = YES;
 		}
@@ -374,7 +382,7 @@
 		self->_hidePopupBarButton.hidden = YES;
 		[self.navigationController setToolbarHidden:YES animated:NO];
 		
-		if (@available(iOS 17.0, *))
+		if(@available(iOS 17.0, *))
 		{
 			UIContentUnavailableConfiguration* config = [UIContentUnavailableConfiguration emptyConfiguration];
 			config.text = title;
@@ -496,6 +504,12 @@
 	targetVC.popupBar.barStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue];
 	
 	targetVC.popupInteractionStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingInteractionStyle] unsignedIntegerValue];
+
+	if(targetVC.effectivePopupInteractionStyle == LNPopupInteractionStyleScroll && [NSUserDefaults.settingDefaults integerForKey:PopupSettingUseScrollingPopupContent] == 0)
+	{
+		targetVC.popupInteractionStyle = LNPopupInteractionStyleSnap;
+	}
+
 	targetVC.popupContentView.popupCloseButtonStyle = closeButtonStyle;
 	
 	targetVC.allowPopupHapticFeedbackGeneration = [NSUserDefaults.settingDefaults boolForKey:PopupSettingHapticFeedbackEnabled];
@@ -608,6 +622,11 @@
 	}
 }
 
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+	return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight ? UIStatusBarStyleDarkContent : UIStatusBarStyleLightContent;
+}
+
 #pragma mark LNPopupPresentationDelegate
 
 - (void)popupPresentationControllerWillPresentPopupBar:(UIViewController*)popupPresentationController animated:(BOOL)animated
@@ -648,16 +667,6 @@
 - (void)popupPresentationController:(UIViewController *)popupPresentationController didClosePopupWithContentController:(UIViewController *)popupContentController animated:(BOOL)animated
 {
 	
-}
-
-@end
-
-@interface PassthroughNavigationController : UINavigationController @end
-@implementation PassthroughNavigationController
-
-- (UITabBarItem *)tabBarItem
-{
-	return self.viewControllers.firstObject.tabBarItem;
 }
 
 @end

@@ -8,7 +8,7 @@ For SwiftUI, check out the [LNPopupUI library](https://github.com/LeoNatan/LNPop
 
 [![GitHub issues](https://img.shields.io/github/issues-raw/LeoNatan/LNPopupController.svg)](https://github.com/LeoNatan/LNPopupController/issues) [![GitHub contributors](https://img.shields.io/github/contributors/LeoNatan/LNPopupController.svg)](https://github.com/LeoNatan/LNPopupController/graphs/contributors) [![Swift Package Manager compatible](https://img.shields.io/badge/swift%20package%20manager-compatible-green)](https://swift.org/package-manager/) [![Carthage compatible](https://img.shields.io/badge/carthage-compatible-4BC51D.svg?style=flat)](https://github.com/Carthage/Carthage)
 
-<p align="center"><img src="./Supplements/open_floating_popup.gif" width="360"/></p>
+<p align="center"><img src="./Supplements/open_floating_popup.gif"/></p>
 
 Once a popup bar is presented with a content view controller, the user can swipe or tap the popup bar at any point to present the popup. After finishing, the user dismisses the popup by either swiping or tapping the popup close button.
 
@@ -24,6 +24,8 @@ The information displayed on the popup bar is provided dynamically with popup it
 Generally, it is recommended to present the popup bar on the outermost container controller. So if you have a view controller contained in a navigation controller, which is in turn contained in a tab bar controller, it is recommended to present the popup bar on the tab bar controller.
 
 Check the demo project for many common use cases of the framework in various scenarios. It contains examples in Swift and Objective C.
+
+**NOTE:** To run the example project, don't forget to update submodules by running: `git submodule update --init --recursive`
 
 ### Features
 
@@ -226,7 +228,27 @@ To hide the popup close button, set the `popupCloseButtonStyle` property to `LNP
 
 Supplying long text for the title and/or subtitle will result in a scrolling text, if text marquee is enabled. Otherwise, the text will be truncated.
 
-<p align="center"><img src="./Supplements/modern_no_scroll.gif" width="360"/> <img src="./Supplements/scroll.gif" width="360"/></p>
+<p align="center"><img src="./Supplements/floating_no_scroll.gif" width="360"/> <img src="./Supplements/scroll.gif" width="360"/></p>
+
+#### Popup Transitions
+
+The framework supports popup image transitions:
+
+<p align="center"><img src="./Supplements/popup_transitions.gif" width="360"/></p>
+
+Transitions are opt-in and require you either use an `LNPopupImageView` image view in your popup content, which is discovered automatically by the system, or provide a view that will serve as the transition target/source by implementing `viewForPopupTransition(from:to:)` in popup content controller.
+
+For optimal results, always use `LNPopupImageView` instances that displays the same image displayed in the popup bar's image view. By default, the system discovers the `LNPopupImageView` image view in your content controller's view hierarchy automatically, and will use that as the transition target/source. The system will smoothly transition between the popup bar's image view and the `LNPopupImageView` instance, taking into account the corner radii and shadows of the views.
+
+> [!TIP]
+> When using automatic discovery, there must be only a single `LNPopupImageView` instance in your content controller's view hierarchy, or results will be undefined. For more advanced scenarios where automatic discovery fails, implement `viewForPopupTransition(from:to:)` in your content controller to return the correct instance.
+
+You can return any custom view in `viewForPopupTransition(from:to:)` to serve as the transition target/source. The system will attempt to match the attributes of the provided view and the popup bar's image view as closely as possible to transition smoothly between them. Implement the `LNPopupTransitionView` protocol in your custom view to allow the system to smoothly transition between your custom view and the popup bar image view.
+
+> [!CAUTION]
+> Views returned from `viewForPopupTransition(from:to:)` must be part of the content controller's view hierarchy, or they will be ignored by the system and no transition will take place.
+
+Transitions are only available for prominent and floating popup bar styles with drag interaction style. Any other combination will result in no transition and this method will not be called by the system.
 
 #### Popup Bar Customization
 
@@ -270,7 +292,7 @@ navigationController?.popupBar.tintColor = .yellow
 
 #### System Interactions
 
-##### Transitions
+##### Bar Transitions
 
 The `hidesBottomBarWhenPushed` property is supported for navigation and tab bar controllers. When set to `true`, the popup bar will transition to the bottom of the pushed controller's view. Setting  `isToolbarHidden = true` and calling `setToolbarHidden(_:animated:)` are also supported.
 
@@ -318,7 +340,7 @@ Starting with iOS 15, scroll-edge appearance is automatically disabled for toolb
 
 #### Custom Popup Bars
 
-The framework supports implementing custom popup bars.
+The framework supports implementing custom popup bars:
 
 <p align="center"><img src="./Supplements/custom_bar.png" width="360"/></p>
 
@@ -373,9 +395,9 @@ To customize this behavior, modify the popup bar's ```semanticContentAttribute``
 
 #### Accessibility
 
-The framework supports accessibility and will honor accessibility labels, hints and values. By default, the accessibility label of the popup bar is the title and subtitle provided by the popup item.
+The framework supports accessibility and will honor accessibility labels, traits, hints and values. By default, the accessibility label of the popup bar is the title and subtitle provided by the popup item.
 
-<p align="center"><img src="./Supplements/default_bar_accessibility_label.png"/></p>
+<p align="center"><img src="./Supplements/default_bar_accessibility_label.png" width="360"/></p>
 
 To modify the accessibility label and hint of the popup bar, set the `accessibilityLabel` and `accessibilityHint` properties of the `LNPopupItem` object of the popup content view controller.
 

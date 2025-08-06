@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "UIViewController+LNPopupSupportPrivate.h"
@@ -16,6 +16,8 @@
 #import "LNPopupBar+Private.h"
 #import <objc/runtime.h>
 
+#define DEBUG_POPUP_BAR_OFFSET 0
+
 static const void* _LNPopupItemKey = &_LNPopupItemKey;
 static const void* _LNPopupControllerKey = &_LNPopupControllerKey;
 const void* _LNPopupPresentationContainerViewControllerKey = &_LNPopupPresentationContainerViewControllerKey;
@@ -27,14 +29,13 @@ static const void* _LNPopupShouldExtendUnderSafeAreaKey = &_LNPopupShouldExtendU
 
 const double LNSnapPercentDefault = 0.32;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wincomplete-implementation"
+extern "C" {
+extern LNPopupInteractionStyle _LNPopupResolveInteractionStyleFromInteractionStyle(LNPopupInteractionStyle style);
+}
+
 @implementation UIViewController (LNPopupSupportPrivate)
 
-@dynamic ln_popupController, popupPresentationContainerViewController, popupContentViewController, bottomBarSupport;
-
 @end
-#pragma clang diagnostic pop
 
 @implementation UIViewController (LNPopupSupport)
 
@@ -57,7 +58,7 @@ const double LNSnapPercentDefault = 0.32;
 
 - (void)presentPopupBarWithContentViewController:(UIViewController*)controller openPopup:(BOOL)openPopup animated:(BOOL)animated completion:(nullable void(^)(void))completionBlock;
 {
-	LNDynamicallySubclass(controller, _LN_UIViewController_AppearanceControl.class);
+	LNDynamicSubclass(controller, _LN_UIViewController_AppearanceControl.class);
 	
 	if(self.view.window == nil)
 	{
@@ -274,6 +275,16 @@ const double LNSnapPercentDefault = 0.32;
 	return NO;
 }
 
+- (nullable UIView*)viewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState
+{
+	return self._ln_discoveredTransitionView;
+}
+
+- (nullable UIView*)_ln_transitionViewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState view:(out id<LNPopupTransitionView> _Nonnull __strong * _Nonnull)outView
+{
+	return nil;
+}
+
 - (void)viewWillMoveToPopupContainerContentView:(LNPopupContentView *)popupContentView
 {
 	
@@ -299,6 +310,11 @@ const double LNSnapPercentDefault = 0.32;
 	return (LNPopupInteractionStyle)[objc_getAssociatedObject(self, _LNPopupInteractionStyleKey) unsignedIntegerValue];
 }
 
+- (LNPopupInteractionStyle)effectivePopupInteractionStyle
+{
+	return _LNPopupResolveInteractionStyleFromInteractionStyle((LNPopupInteractionStyle)[objc_getAssociatedObject(self, _LNPopupInteractionStyleKey) unsignedIntegerValue]);
+}
+
 - (void)setPopupInteractionStyle:(LNPopupInteractionStyle)popupInteractionStyle
 {
 	objc_setAssociatedObject(self, _LNPopupInteractionStyleKey, @(popupInteractionStyle), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -321,11 +337,6 @@ const double LNSnapPercentDefault = 0.32;
 	objc_setAssociatedObject(self, _LNPopupInteractionSnapPercentKey, @(_ln_clamp(popupDragPercent, 0.1, 0.9)), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (LNPopupController*)_ln_popupController_nocreate
-{
-	return objc_getAssociatedObject(self, _LNPopupControllerKey);
-}
-
 - (__kindof UIView *)viewForPopupInteractionGestureRecognizer
 {
 	return self.view;
@@ -341,9 +352,36 @@ const double LNSnapPercentDefault = 0.32;
 	self._ln_popupController.wantsFeedbackGeneration = allowPopupHapticFeedbackGeneration;
 }
 
+static const void* _LNPopupContentControllerDiscoveredTransitionView = &_LNPopupContentControllerDiscoveredTransitionView;
+
+- (void)_ln_setDiscoveredTransitionView:(LNPopupImageView *)ln_discoveredShadowedImageView
+{
+	id objToSet = nil;
+	if(ln_discoveredShadowedImageView != nil)
+	{
+		objToSet = [_LNWeakRef refWithObject:ln_discoveredShadowedImageView];
+	}
+	objc_setAssociatedObject(self, _LNPopupContentControllerDiscoveredTransitionView, objToSet, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (LNPopupImageView *)_ln_discoveredTransitionView
+{
+	_LNWeakRef* rv = objc_getAssociatedObject(self, _LNPopupContentControllerDiscoveredTransitionView);
+	if(rv != nil && rv.object == nil)
+	{
+		[self _ln_setDiscoveredTransitionView:nil];
+	}
+	return rv.object;
+}
+
 @end
 
 @implementation UIViewController (LNCustomContainerPopupSupport)
+
+- (LNPopupController*)_ln_popupController_nocreate
+{
+	return objc_getAssociatedObject(self, _LNPopupControllerKey);
+}
 
 - (LNPopupController *)_ln_popupController
 {
@@ -412,6 +450,9 @@ const double LNSnapPercentDefault = 0.32;
 		return 0.0;
 	}
 	
+#if DEBUG_POPUP_BAR_OFFSET
+	return -80;
+#else
 	id dockingView = self.bottomDockingViewForPopupBar;
 	
 	if(dockingView != nil && ([dockingView isKindOfClass:UIToolbar.class] || [dockingView isKindOfClass:UITabBar.class]) == NO)
@@ -420,7 +461,18 @@ const double LNSnapPercentDefault = 0.32;
 		return 0.0;
 	}
 	
+	if(LNPopupBar.isCatalystApp)
+	{
+		return -7.0;
+	}
+	
+	if(self.view.window.safeAreaInsets.bottom == 0)
+	{
+		return -4.0;
+	}
+	
 	return self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular ? 7.0 : 0.0;
+#endif
 }
 
 - (CGRect)defaultFrameForBottomDockingView_internal
@@ -439,9 +491,7 @@ const double LNSnapPercentDefault = 0.32;
 {
 	LNPopupBarStyle barStyle = popupBar != nil ? popupBar.resolvedStyle : _LNPopupResolveBarStyleFromBarStyle(LNPopupBarStyleDefault);
 	
-	CGRect rv = [self bottomDockingViewForPopupBar] != nil ? [self defaultFrameForBottomDockingView] : [self defaultFrameForBottomDockingView_internal];
-	rv.origin.y += [self _ln_popupOffsetForPopupBarStyle:barStyle];
-	return rv;
+	return [self bottomDockingViewForPopupBar] != nil ? [self defaultFrameForBottomDockingView] : [self defaultFrameForBottomDockingView_internal];
 }
 
 - (BOOL)shouldExtendPopupBarUnderSafeArea
@@ -472,6 +522,74 @@ const double LNSnapPercentDefault = 0.32;
 	return backgroundVisible && (bottomBarExtensionIsVisible || scrollEdgeAppearanceRequiresFade);
 }
 
++ (void)_ln_beginTransitioningLockWithWindow:(UIWindow*)window userInteractionsEnabled:(BOOL)userInteractionEnabled allowedViews:(NSArray*)allowedViews lockRotation:(BOOL)lockRotation
+{
+//	NSLog(@"_ln_beginTransitioningLockWithWindow: %@ userInteractionsEnabled: %@ allowedViews: %@ lockRotation: %@", window, @(userInteractionEnabled), allowedViews, @(lockRotation));
+	
+	if(userInteractionEnabled)
+	{
+		[window _ln_setPopupInteractionOnly:allowedViews];
+	}
+	else
+	{
+		window.userInteractionEnabled = NO;
+	}
+	
+#if ! LNPopupControllerEnforceStrictClean
+	static void (^disableRotation)(id);
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		SEL sel = NSSelectorFromString(LNPopupHiddenString("beginDisablingInterfaceAutorotation"));
+		Method m = class_getInstanceMethod(UIWindow.class, sel);
+		if(m == NULL)
+		{
+			disableRotation = nil;
+			return;
+		}
+		void (*orig)(id, SEL) = reinterpret_cast<decltype(orig)>(method_getImplementation(m));
+		disableRotation = ^ (id self) {
+			orig(self, sel);
+		};
+	});
+	
+	if(lockRotation && disableRotation)
+	{
+		disableRotation(window);
+	}
+#endif
+}
+
++ (void)_ln_endTransitioningLockWithWindow:(UIWindow*)window unlockingRotation:(BOOL)unlockRotation
+{
+//	NSLog(@"_ln_endTransitioningLockWithWindow: %@ unlockingRotation %@", window, @(unlockRotation));
+	
+	[window _ln_setPopupInteractionOnly:nil];
+	window.userInteractionEnabled = YES;
+	
+#if ! LNPopupControllerEnforceStrictClean
+	static void (^enableRotation)(id);
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		SEL sel = NSSelectorFromString(LNPopupHiddenString("endDisablingInterfaceAutorotationAnimated:"));
+		Method m = class_getInstanceMethod(UIWindow.class, sel);
+		if(m == NULL)
+		{
+			enableRotation = nil;
+			return;
+		}
+		void (*orig)(id, SEL, BOOL) = reinterpret_cast<decltype(orig)>(method_getImplementation(m));
+		enableRotation = ^ (id self) {
+			orig(self, sel, YES);
+		};
+	});
+	
+	if(unlockRotation && enableRotation)
+	{
+		enableRotation(window);
+	}
+#endif
+}
+
 @end
 
 @implementation UINavigationController (LNPopupSupport)
@@ -481,6 +599,16 @@ const double LNSnapPercentDefault = 0.32;
 	return [self.topViewController positionPopupCloseButton:popupCloseButton];
 }
 
+- (nullable UIView*)viewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState
+{
+	return [self.topViewController viewForPopupTransitionFromPresentationState:fromState toPresentationState:toState];
+}
+
+- (nullable UIView*)_ln_transitionViewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState view:(out id<LNPopupTransitionView> _Nonnull __strong * _Nonnull)outView
+{
+	return [self.topViewController _ln_transitionViewForPopupTransitionFromPresentationState:fromState toPresentationState:toState view:outView];
+}
+
 @end
 
 @implementation UITabBarController (LNPopupSupport)
@@ -488,6 +616,16 @@ const double LNSnapPercentDefault = 0.32;
 - (BOOL)positionPopupCloseButton:(LNPopupCloseButton*)popupCloseButton
 {
 	return [self.selectedViewController positionPopupCloseButton:popupCloseButton];
+}
+
+- (nullable UIView*)viewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState
+{
+	return [self.selectedViewController viewForPopupTransitionFromPresentationState:fromState toPresentationState:toState];
+}
+
+- (nullable UIView*)_ln_transitionViewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState view:(out id<LNPopupTransitionView> _Nonnull __strong * _Nonnull)outView
+{
+	return [self.selectedViewController _ln_transitionViewForPopupTransitionFromPresentationState:fromState toPresentationState:toState view:outView];
 }
 
 @end

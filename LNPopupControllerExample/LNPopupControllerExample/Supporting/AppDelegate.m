@@ -3,7 +3,7 @@
 //  LNPopupControllerExample
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "AppDelegate.h"
@@ -12,7 +12,6 @@
 
 @interface NSBundle ()
 
-- (NSString *) localizedStringForKey:(NSString *)arg1 value:(NSString *)arg2 table:(NSString *)arg3 localizations:(id)arg4;
 - (NSAttributedString *)localizedAttributedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName localization:(id)arg4;
 @end
 

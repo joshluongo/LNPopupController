@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2021-08-02.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 import UIKit
@@ -16,7 +16,8 @@ import SwiftUI
 
 @_cdecl("__ln_doNotCall__fixUIHostingViewHitTest")
 @_spi(LNPopupControllerInternal)
-public func __ln_doNotCall__fixUIHostingViewHitTest() {
+public
+func __ln_doNotCall__fixUIHostingViewHitTest() {
 	DispatchQueue.main.async {
 		guard let view = UIHostingController(rootView: EmptyView()).view else {
 			return
@@ -50,14 +51,16 @@ public func __ln_doNotCall__fixUIHostingViewHitTest() {
 }
 #endif
 
-public extension Double {
+public
+extension Double {
 	/// The default popup snap percent. See `LNPopupInteractionStyle.customizedSnap(percent:)` for more information.
 	static var defaultPopupSnapPercent: Double {
 		return __LNSnapPercentDefault
 	}
 }
 
-public extension UIViewController {
+public
+extension UIViewController {
 	/// Available interaction styles with the popup bar and popup content view.
 	enum PopupInteractionStyle {
 		/// The default interaction style for the current environment.
@@ -119,9 +122,27 @@ public extension UIViewController {
 			}
 		}
 	}
+	
+	var effectivePopupInteractionStyle: PopupInteractionStyle {
+		switch __effectivePopupInteractionStyle {
+		case .drag:
+			return .drag
+		case .snap:
+			return __popupSnapPercent == .defaultPopupSnapPercent ? .snap : .customizedSnap(percent: __popupSnapPercent)
+		case .scroll:
+			return .scroll
+		case .none:
+			return .none
+		case .default:
+			fallthrough
+		@unknown default:
+			fatalError("Please open an issue here: https://github.com/LeoNatan/LNPopupController/issues/new/choose")
+		}
+	}
 }
 
-public extension LNPopupItem {
+public
+extension LNPopupItem {
 	/// The popup item's attributed title.
 	///
 	/// If no title or subtitle is set, the system will use the view controller's title.
@@ -147,7 +168,8 @@ public extension LNPopupItem {
 	}
 }
 
-public extension LNPopupBarAppearance {
+public
+extension LNPopupBarAppearance {
 	/// Display attributes for the popup bar’s title text.
 	///
 	/// Only attributes from the UIKit scope are supported.
@@ -175,7 +197,8 @@ public extension LNPopupBarAppearance {
 	}
 }
 
-public extension UIViewController {
+public
+extension UIViewController {
 	/// Presents an interactive popup bar in the receiver's view hierarchy and optionally opens the popup in the same animation. The popup bar is attached to the receiver's docking view.
 	///
 	/// You may call this method multiple times with different controllers, triggering replacement to the popup content view and update to the popup bar, if popup is open or bar presented, respectively.

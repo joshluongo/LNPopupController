@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2020-08-01.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -48,15 +48,13 @@ UIEdgeInsets _LNEdgeInsetsFromDirectionalEdgeInsets(UIView* forView, NSDirection
 
 @end
 
-#if TARGET_OS_MACCATALYST
-
-@interface UIWindow (MacCatalystSupport)
+@interface UIWindow (LNPopupSupport)
 
 @property (nonatomic, strong, readonly) UIEvent* _ln_currentEvent;
 
-@end
+@property (nonatomic, assign, nullable, getter=_ln_popupInteractionOnly, setter=_ln_setPopupInteractionOnly:) NSArray* popupInteractionOnly;
 
-#endif
+@end
 
 NS_ASSUME_NONNULL_END
 
@@ -68,3 +66,5 @@ NS_ASSUME_NONNULL_END
 - (BOOL)_ln_isAtTop;
 
 @end
+
+@interface _LNPopupBarBackgroundGroupNameOverride: NSObject <UIObjectTraitDefinition> @end

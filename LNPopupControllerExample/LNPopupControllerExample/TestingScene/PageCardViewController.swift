@@ -3,7 +3,7 @@
 //  LNPopupControllerExample
 //
 //  Created by Léo Natan on 2024-09-27.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 import UIKit
@@ -11,14 +11,16 @@ import UIKit
 class PageCardViewController: UIViewController {
 	@IBOutlet var cardView: UIView!
 	@IBOutlet var indexLabel: UILabel!
-	public var prefix: String? = nil {
+	public
+var prefix: String? = nil {
 		didSet {
 			if isViewLoaded {
 				indexLabel.text = "\(prefix == nil ? "" : prefix!)\(index)"
 			}
 		}
 	}
-	public var index: Int = -1 {
+	public
+var index: Int = -1 {
 		didSet {
 			if isViewLoaded {
 				indexLabel.text = "\(prefix == nil ? "" : prefix!)\(index)"

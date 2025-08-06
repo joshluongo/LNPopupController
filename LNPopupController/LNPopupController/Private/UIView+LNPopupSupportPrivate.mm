@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2020-08-01.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "UIView+LNPopupSupportPrivate.h"
@@ -15,9 +15,15 @@
 #import "_LNPopupUIBarAppearanceProxy.h"
 #import "_LNWeakRef.h"
 #import <objc/runtime.h>
-#if TARGET_OS_MACCATALYST
-#import <AppKit/AppKit.h>
-#endif
+
+@implementation _LNPopupBarBackgroundGroupNameOverride
+
++ (__kindof id<NSObject>)defaultValue
+{
+	return nil;
+}
+
+@end
 
 static const void* LNPopupAttachedPopupController = &LNPopupAttachedPopupController;
 static const void* LNPopupAwaitingViewInWindowHierarchyKey = &LNPopupAwaitingViewInWindowHierarchyKey;
@@ -37,11 +43,6 @@ static const void* LNPopupBarBackgroundViewForceAnimatedKey = &LNPopupBarBackgro
 			return YES;
 		}), encoding);
 	}
-}
-
-- (BOOL)_safeAreaInsetsFrozen
-{
-	return YES;
 }
 
 @end
@@ -123,6 +124,13 @@ static const void* LNPopupBarBackgroundViewForceAnimatedKey = &LNPopupBarBackgro
 		
 		{
 			Class cls = NSClassFromString(LNPopupHiddenString("_UINavigationBarVisualProviderModernIOS"));
+			Method m = class_getInstanceMethod(cls, updateBackgroundGroupNameSEL);
+			void (*orig)(id, SEL) = reinterpret_cast<decltype(orig)>(method_getImplementation(m));
+			method_setImplementation(m, imp_implementationWithBlock(trampoline(orig)));
+		}
+		
+		{
+			Class cls = NSClassFromString(LNPopupHiddenString("_UITabBarVisualProviderLegacyIOS"));
 			Method m = class_getInstanceMethod(cls, updateBackgroundGroupNameSEL);
 			void (*orig)(id, SEL) = reinterpret_cast<decltype(orig)>(method_getImplementation(m));
 			method_setImplementation(m, imp_implementationWithBlock(trampoline(orig)));
@@ -255,7 +263,7 @@ void _LNNotify(UIView* self, NSMutableArray<LNInWindowBlock>* waiting)
 
 - (void)_ln_freezeInsets
 {
-	LNDynamicallySubclass(self, __LNPopupUIViewFrozenInsets.class);
+	LNDynamicSubclass(self, __LNPopupUIViewFrozenInsets.class);
 }
 
 @end
@@ -281,7 +289,6 @@ void _LNNotify(UIView* self, NSMutableArray<LNInWindowBlock>* waiting)
 	NSArray* rv = [self _ln_rSTTV];
 	NSMutableArray* popupRV = [NSMutableArray new];
 	
-	//_viewControllerForAncestor
 	static NSString* vCFA = LNPopupHiddenString("_viewControllerForAncestor");
 	
 	for(UIView* scrollToTopCandidate in rv)
@@ -311,10 +318,8 @@ void _LNNotify(UIView* self, NSMutableArray<LNInWindowBlock>* waiting)
 @end
 
 #endif
-
-#if TARGET_OS_MACCATALYST
 	
-@implementation UIWindow (MacCatalystSupport)
+@implementation UIWindow (LNPopupSupport)
 
 - (UIEvent*)_ln_currentEvent
 {
@@ -340,10 +345,52 @@ void _LNNotify(UIView* self, NSMutableArray<LNInWindowBlock>* waiting)
 #endif
 }
 
++ (void)load
+{
+	@autoreleasepool
+	{
+		LNSwizzleMethod(self,
+						@selector(hitTest:withEvent:),
+						@selector(_ln_hitTest:withEvent:));
+	}
+}
+
+static const void* LNPopupInteractionOnlyKey = &LNPopupInteractionOnlyKey;
+
+- (NSArray*)_ln_popupInteractionOnly
+{
+	return objc_getAssociatedObject(self, LNPopupInteractionOnlyKey);
+}
+
+- (void)_ln_setPopupInteractionOnly:(NSArray*)popupInteractionOnly
+{
+	objc_setAssociatedObject(self, LNPopupInteractionOnlyKey, popupInteractionOnly, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (UIView *)_ln_hitTest:(CGPoint)point withEvent:(UIEvent *)event
+{
+	id tested = [self _ln_hitTest:point withEvent:event];
+	
+	NSArray<UIView*>* allowedViews = self._ln_popupInteractionOnly;
+	if(allowedViews && tested)
+	{
+		BOOL isAllowed = NO;
+		
+		for(UIView* allowedView in allowedViews)
+		{
+			if([tested isDescendantOfView:allowedView])
+			{
+				isAllowed = YES;
+			}
+		}
+		
+		return isAllowed ? tested : nil;
+	}
+	
+	return tested;
+}
+
 @end
-
-
-#endif
 
 LNAlwaysInline
 BOOL _LNBottomBarIsInPopupPresentation(NSObject* self)
@@ -803,3 +850,39 @@ UIEdgeInsets _LNEdgeInsetsFromDirectionalEdgeInsets(UIView* view, NSDirectionalE
 		return UIEdgeInsetsMake(edgeInsets.top, edgeInsets.trailing, edgeInsets.bottom, edgeInsets.leading);
 	}
 }
+
+#if ! LNPopupControllerEnforceStrictClean
+
+@interface UIVisualEffectView (LNPopupSupportPrivate) @end
+@implementation UIVisualEffectView (LNPopupSupportPrivate)
+
++ (void)load
+{
+	@autoreleasepool
+	{
+		if(@available(iOS 17.0, *))
+		{
+			NSString* selName = LNPopupHiddenString("_setGroupName:");
+			LNSwizzleMethod(self,
+							NSSelectorFromString(selName),
+							@selector(_ln_sGN:));
+		}
+	}
+}
+
+//_setGroupName:
+- (void)_ln_sGN:(NSString*)name API_AVAILABLE(ios(17.0))
+{
+	NSString* override = [self.traitCollection objectForTrait:_LNPopupBarBackgroundGroupNameOverride.class];
+	if(override != nil)
+	{
+		[self _ln_sGN:override];
+		return;
+	}
+	
+	[self _ln_sGN:name];
+}
+
+@end
+
+#endif

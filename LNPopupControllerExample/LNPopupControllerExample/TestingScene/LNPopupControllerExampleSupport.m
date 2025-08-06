@@ -3,7 +3,7 @@
 //  LNPopupControllerExampleSupport
 //
 //  Created by Léo Natan on 2021-08-31.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "LNPopupControllerExampleSupport.h"
@@ -19,12 +19,52 @@
 
 @end
 
+@interface DemoNavigationController : UINavigationController @end
+@implementation DemoNavigationController
+
+- (UITabBarItem *)tabBarItem
+{
+	return self.viewControllers.firstObject.tabBarItem;
+}
+
+- (UIViewController *)childViewControllerForStatusBarStyle
+{
+	return self.topViewController;
+}
+
+- (UIViewController *)childViewControllerForStatusBarHidden
+{
+	return self.topViewController;
+}
+
+- (UIViewController *)childViewControllerForHomeIndicatorAutoHidden
+{
+	return self.topViewController;
+}
+
+@end
+
 @interface DemoTabBarController : UITabBarController @end
 
 @implementation DemoTabBarController
 {
 	NSMutableArray<UITab*>* _tabs API_AVAILABLE(ios(18.0));
 	NSMutableArray<UITab*>* _sidebarTabs API_AVAILABLE(ios(18.0));
+}
+
+- (UIViewController *)childViewControllerForStatusBarStyle
+{
+	return self.selectedViewController;
+}
+
+- (UIViewController *)childViewControllerForStatusBarHidden
+{
+	return self.selectedViewController;
+}
+
+- (UIViewController *)childViewControllerForHomeIndicatorAutoHidden
+{
+	return self.selectedViewController;
 }
 
 - (void)awakeFromNib
@@ -99,7 +139,7 @@
 	[super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
 	
 	[coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
-		if (@available(iOS 18.0, *))
+		if(@available(iOS 18.0, *))
 		{
 			[self updateTabsForTraitCollection:newCollection];
 		}

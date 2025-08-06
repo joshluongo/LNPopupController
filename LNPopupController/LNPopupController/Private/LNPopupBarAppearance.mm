@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2021-06-20.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "LNPopupBarAppearance+Private.h"
@@ -27,7 +27,7 @@ static NSArray* __notifiedProperties = nil;
 	{
 		static dispatch_once_t onceToken;
 		dispatch_once(&onceToken, ^{
-			__notifiedProperties = _LNPopupGetPropertyNames(self, nil);
+			__notifiedProperties = LNPopupGetPropertyNames(self, nil);
 			
 #ifndef LNPopupControllerEnforceStrictClean
 			Method m1 = class_getInstanceMethod(self, @selector(a:cC:));
@@ -177,7 +177,9 @@ static NSArray* __notifiedProperties = nil;
 	
 	for(NSString* key in __notifiedProperties) 
 	{
-		rv = rv && [[self valueForKey:key] isEqual:[other valueForKey:key]];
+		id myVal = [self valueForKey:key];
+		id otherVal = [other valueForKey:key];
+		rv = rv && (myVal == otherVal || [myVal isEqual:otherVal]);
 	}
 	
 	return rv;

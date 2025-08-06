@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2015-08-23.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -36,7 +36,7 @@ CF_EXTERN_C_BEGIN
 @property (nonatomic, weak) id<LNPopupPresentationDelegate> userPopupPresentationDelegate;
 
 @property (nonatomic, strong) __kindof UIViewController* currentContentController;
-@property (nonatomic, weak) __kindof UIViewController* containerController;
+@property (nonatomic, weak, readonly) __kindof UIViewController* containerController;
 
 @property (nonatomic) CGPoint lastPopupBarLocation;
 @property (nonatomic) CFTimeInterval lastSeenMovement;

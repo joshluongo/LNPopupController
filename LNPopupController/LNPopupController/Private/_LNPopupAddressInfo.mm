@@ -3,7 +3,7 @@
 //  LNPopupController
 //
 //  Created by Léo Natan on 2024-08-09.
-//  Copyright © 2015-2024 Léo Natan. All rights reserved.
+//  Copyright © 2015-2025 Léo Natan. All rights reserved.
 //
 
 #import "_LNPopupAddressInfo.h"
@@ -24,7 +24,10 @@
 	if(self)
 	{
 		address = _address;
-		dladdr((void*)address, &_info);
+		if(dladdr((void*)address, &_info) <= 0)
+		{
+			return nil;
+		}
 	}
 	
 	return self;
