@@ -1,4 +1,9 @@
 #import "SceneDelegate.h"
+#if LNPOPUP
+#import "LNPopupControllerExample-Swift.h"
+#else
+#import "LNPopupControllerExampleNoPopup-Swift.h"
+#endif
 
 @interface DemoWindow : UIWindow @end
 @implementation DemoWindow
@@ -7,7 +12,7 @@
 {
 	id rv = [super hitTest:point withEvent:event];
 	
-//	NSLog(@"DemoWindow hitTest %@", rv);
+//	NSLog(@"DemoWindow hitTest %@ userInteractionEnabled: %@", rv, [self valueForKey:@"userInteractionEnabled"]);
 	
 	return rv;
 }
@@ -22,7 +27,7 @@
 	
 	if(self)
 	{
-		self.window = [DemoWindow new];
+		
 	}
 	
 	return self;
@@ -30,21 +35,31 @@
 
 - (void)scene:(UIWindowScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions 
 {
+	self.window = [[DemoWindow alloc] initWithWindowScene:scene];
 	self.window.windowScene = scene;
 	self.windowScene = scene;
 	
-	[self.window makeKeyAndVisible];
-	
 #if TARGET_OS_MACCATALYST
-	scene.sizeRestrictions.maximumSize = CGSizeMake(DBL_MAX, DBL_MAX);
-	scene.titlebar.toolbar = nil;
+	self.windowScene.sizeRestrictions.minimumSize = CGSizeMake(800, 500);
 	
-	if([self.window.rootViewController isKindOfClass:UISplitViewController.class])
+	scene.titlebar.toolbarStyle = UITitlebarToolbarStyleUnified;
+	self.window.rootViewController = [LNCatalystLandingViewController new];
+//	self.window.rootViewController = [UIStoryboard storyboardWithName:@"Music" bundle:nil].instantiateInitialViewController;
+	
+	NSMutableDictionary* userInfo = [session.userInfo ?: @{} mutableCopy];
+	if([userInfo[@"isNewlyCreated"] boolValue] == YES)
 	{
-		UISplitViewController* split = (id)self.window.rootViewController;
-		split.primaryBackgroundStyle = UISplitViewControllerBackgroundStyleSidebar;
+		CGRect frame = CGRectInset(_windowScene.screen.bounds, 250, 120);
+		
+		[_windowScene requestGeometryUpdateWithPreferences:[[UIWindowSceneGeometryPreferencesMac alloc] initWithSystemFrame:frame] errorHandler:nil];
 	}
+	userInfo[@"isNewlyCreated"] = @NO;
+	session.userInfo = userInfo;
+#else
+	self.window.rootViewController = [UIStoryboard storyboardWithName:@"Main" bundle:nil].instantiateInitialViewController;
 #endif
+	
+	[self.window makeKeyAndVisible];
 }
 
 - (void)sceneDidDisconnect:(UIScene *)scene 

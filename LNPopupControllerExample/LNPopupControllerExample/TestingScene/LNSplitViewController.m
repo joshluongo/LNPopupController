@@ -14,21 +14,26 @@
 {
 	[super viewDidLoad];
 	
+	self.minimumPrimaryColumnWidth = 370;
+	self.maximumPrimaryColumnWidth = 500;
+	
 	if([self isKindOfClass:LNSplitViewControllerSecondaryPopup.class] == NO)
 	{
-		self.minimumPrimaryColumnWidth = 400;
-		self.maximumPrimaryColumnWidth = 400;
-		
 		if(self.style == UISplitViewControllerStyleTripleColumn)
 		{
-			self.minimumSupplementaryColumnWidth = 400;
-			self.maximumSupplementaryColumnWidth = 400;
+			self.minimumSupplementaryColumnWidth = 370;
+			self.maximumSupplementaryColumnWidth = 500;
 		}
 	}
 }
 
 - (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
+	if(newCollection.userInterfaceIdiom != UIUserInterfaceIdiomPhone)
+	{
+		return;
+	}
+	
 	[super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
 	
 	if(newCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)

@@ -12,31 +12,17 @@
 #import "_LNPopupBarBackgroundView.h"
 #import "_LNPopupBackgroundShadowView.h"
 #import "_LNPopupBarBackgroundMaskView.h"
-#import "MarqueeLabel.h"
+#import "_LNPopupGlassUtils.h"
+#import "_LNPopupTransitionView.h"
+#import "_LNPopupTitlesController.h"
+#import "_LNPopupTitlesPagingController.h"
 
 CF_EXTERN_C_BEGIN
-
-extern const CGFloat LNPopupBarHeightCompact;
-extern const CGFloat LNPopupBarHeightProminent;
-extern const CGFloat LNPopupBarHeightFloating;
+extern const Class __ln_systemButtonBarButtonClass;
 
 extern CGFloat _LNPopupBarHeightForPopupBar(LNPopupBar* popupBar);
 
-inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFromBarStyle(LNPopupBarStyle style)
-{
-	LNPopupBarStyle rv = style;
-	if(rv == LNPopupBarStyleDefault)
-	{
-		if(@available(iOS 17, *)) {
-			rv = LNPopupBarStyleFloating;
-		}
-		else
-		{
-			rv = LNPopupBarStyleProminent;
-		}
-	}
-	return rv;
-}
+extern LNPopupBarStyle _LNPopupResolveBarStyleFromBarStyle(LNPopupBarStyle style, LNPopupBar* popupBar, BOOL* isFloating, BOOL* isCompact, BOOL* isCustom);
 
 @protocol _LNPopupBarDelegate <NSObject>
 
@@ -47,6 +33,20 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 - (void)_popupBar:(LNPopupBar*)bar updateCustomBarController:(LNPopupCustomBarViewController*)customController cleanup:(BOOL)cleanup;
 - (void)_removeInteractionGestureForPopupBar:(LNPopupBar*)bar;
 
+- (void)_popupBar:(LNPopupBar*)bar setUserPopupItem:(LNPopupItem*)newItem;
+- (void)_popupBar:(LNPopupBar*)bar setPagedPopupItem:(LNPopupItem*)newItem;
+- (void)_generatePagingFeedbackForPopupBar:(LNPopupBar*)bar;
+
+- (void)_popupBarInheritsBottomBarMetricsDidChange:(LNPopupBar*)popupBar;
+
+- (void)_popupBarHingeInteractionDidUpdate:(LNPopupBar*)popupBar;
+
+@end
+
+@protocol _LNPopupBarLayoutDelegate <NSObject>
+
+- (void)_popupBarDidLayout:(LNPopupBar*)popupBar;
+
 @end
 
 @protocol _LNPopupBarSupport <NSObject>
@@ -56,11 +56,27 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 @end
 
+@interface _LNPopupBarContentView : _LNPopupBarBackgroundView
+
+@property (nonatomic, assign, getter=isShiny) BOOL shiny;
+
+@end
+
+@interface _LNPopupBarProgressView: UIProgressView @end
+
+@class _LNPopupToolbar;
+
 @interface LNPopupBar () <UIPointerInteractionDelegate, _LNPopupBarAppearanceDelegate>
 
 + (void)setAnimatesItemSetter:(BOOL)animate;
 
 @property (nonatomic, assign, readonly) LNPopupBarStyle resolvedStyle;
+@property (nonatomic, assign, readonly) BOOL resolvedIsFloating;
+@property (nonatomic, assign, readonly) BOOL resolvedIsCompact;
+@property (nonatomic, assign, readonly) BOOL resolvedIsCustom;
+@property (nonatomic, assign, readonly) BOOL resolvedIsFloatingCustom;
+@property (nonatomic, assign, readonly) BOOL resolvedIsGlass;
+@property (nonatomic, assign, readonly) BOOL resolvedIsGlassInteractive;
 
 @property (nonatomic, strong) UIColor* systemTintColor;
 @property (nonatomic, strong) UIColor* systemBackgroundColor;
@@ -68,20 +84,24 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 @property (nonatomic, readonly, strong) LNPopupBarAppearance* activeAppearance;
 @property (nonatomic, readonly, strong) LNPopupBarAppearanceChainProxy* activeAppearanceChain;
 
-- (void)_recalcActiveAppearanceChain;
+- (void)_setNeedsRecalcActiveAppearanceChain;
+
+@property (nonatomic, strong) _LNPopupToolbar* toolbar;
 
 @property (nonatomic, strong) UIImageView* shadowView;
 @property (nonatomic, strong) UIImageView* bottomShadowView;
 
-@property (nonatomic, weak, readwrite) LNPopupItem* popupItem;
+- (void)_setPopupItem:(LNPopupItem*)popupItem;
 
 @property (nonatomic, weak) __kindof UIViewController* barContainingController;
 @property (nonatomic, weak) id<_LNPopupBarDelegate> _barDelegate;
+@property (nonatomic, weak) id<_LNPopupBarLayoutDelegate> _barLayoutDelegate;
 
 @property (nonatomic, copy) NSAttributedString* attributedTitle;
 @property (nonatomic, copy) NSAttributedString* attributedSubtitle;
 
-@property (nonatomic) NSDirectionalEdgeInsets _hackyMargins;
+@property (nonatomic, readonly) NSDirectionalEdgeInsets floatingLayoutMargins;
+@property (nonatomic, setter=_setHackyMarginsInSuperviewSemanticContext:) NSDirectionalEdgeInsets _hackyMarginsInSuperviewSemanticContext;
 
 @property (nonatomic, strong) UIImage* image;
 
@@ -90,7 +110,8 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 @property (nonatomic, strong, readwrite) UIProgressView* progressView;
 
-@property (nonatomic, strong) _LNPopupBarBackgroundView* contentView;
+@property (nonatomic, strong) UIView* layoutContainer;
+@property (nonatomic, strong) _LNPopupBarContentView* contentView;
 @property (nonatomic, strong) UIView* contentMaskView;
 
 @property (nonatomic, strong) _LNPopupBarBackgroundView* backgroundView;
@@ -119,17 +140,20 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 @property (nonatomic) BOOL acceptsSizing;
 
+@property (nonatomic, strong) _LNPopupTitlesPagingController* titlePagingController;
+@property (nonatomic, strong) _LNPopupTitlesController* titlesController;
+
 @property (nonatomic) BOOL _applySwiftUILayoutFixes;
 
 @property (nonatomic, strong) UIFont* swiftuiInheritedFont;
 
 @property (nonatomic, strong) UIView* swiftuiTitleContentView;
+@property (nonatomic, strong) UIViewController* swiftuiTitleContentViewController;
 
 @property (nonatomic, strong) UIViewController* swiftuiImageController;
 @property (nonatomic, strong) UIViewController* swiftuiHiddenLeadingController;
 @property (nonatomic, strong) UIViewController* swiftuiHiddenTrailingController;
 
-- (void)_delayBarButtonLayout;
 - (void)_layoutBarButtonItems;
 
 - (void)_setTitleViewMarqueesPaused:(BOOL)paused;
@@ -142,15 +166,47 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 + (BOOL)isCatalystApp;
 - (BOOL)isWidePad;
 
+@property (nonatomic, strong) _LNPopupTransitionView* os26TransitionView;
+
+@property (nonatomic) CGRect backgroundViewFrameDuringAnimation;
+
 @end
+
+@interface _LNTransitionPopupBar: LNPopupBar @end
 
 @protocol _LNPopupToolbarLayoutDelegate <NSObject>
 
 - (void)_toolbarDidLayoutSubviews;
 
+- (UIEdgeInsets)contentInsetsIncludingImage:(BOOL)includeImage;
+
 @end
 
-@interface LNPopupBar () <_LNPopupToolbarLayoutDelegate>
+@interface _LNPopupToolbar : UIToolbar
+
+@property (nonatomic) CGFloat itemSpacing;
+@property (nonatomic, weak) id<_LNPopupToolbarLayoutDelegate> _layoutDelegate;
+
+- (void)forceLayoutOnButtons;
+
+- (BOOL)_isViewDescendantOfToolbarItem:(UIView*)view;
++(UIView*)_viewForBarButtonItem:(UIBarButtonItem*)barButtonItem;
+
+@end
+
+@protocol _LNPopupLayoutBarLayoutDelegate <NSObject>
+
+- (void)_layoutBarDidLayoutSubviews;
+
+@end
+
+@interface _LNPopupLayoutBar: UINavigationBar
+
+@property (nonatomic, weak) id<_LNPopupLayoutBarLayoutDelegate> _layoutDelegate;
+
+@end
+
+@interface LNPopupBar () <_LNPopupToolbarLayoutDelegate, _LNPopupLayoutBarLayoutDelegate>
 
 - (void)_windowWillRotate:(NSNotification*)note;
 - (void)_windowDidRotate:(NSNotification*)note;
@@ -161,47 +217,12 @@ inline __attribute__((always_inline)) LNPopupBarStyle _LNPopupResolveBarStyleFro
 
 @end
 
-@protocol LNMarqueeLabel <NSObject>
-
-- (void)resetLabel;
-- (void)unpauseLabel;
-- (void)pauseLabel;
-- (void)restartLabel;
-- (BOOL)isPaused;
-- (void)shutdownLabel;
-
-@property (nonatomic, assign) CGFloat rate;
-@property (nonatomic, assign) CGFloat animationDelay;
-@property (nonatomic, weak) MarqueeLabel* synchronizedLabel;
-@property (nonatomic, readonly) NSTimeInterval animationDuration;
-@property (nonatomic, assign) BOOL holdScrolling;
-
-@end
-
-@interface _LNPopupBarContentView : _LNPopupBarBackgroundView @end
-
-@interface _LNPopupBarTitlesView : UIStackView @end
-
-@interface _LNPopupToolbar : UIToolbar
-
-@property (nonatomic, weak) id<_LNPopupToolbarLayoutDelegate> _layoutDelegate;
-
-@end
-
-@interface _LNPopupTitleLabelWrapper: UIView
-
-+ (instancetype)wrapperForLabel:(UILabel*)wrapped;
-
-@property (nonatomic, strong) UILabel* wrapped;
-@property (nonatomic, strong) NSLayoutConstraint* wrappedWidthConstraint;
-
-@end
-
 @interface _LNPopupBarShadowView : UIImageView @end
 
-@interface LNNonMarqueeLabel : UILabel <LNMarqueeLabel> @end
+@interface _LNPopupBottomBarSupport : UIView @end
 
-@interface MarqueeLabel () <LNMarqueeLabel> @end
+@interface _LNPopupBarExtensionView : _LNPopupBarBackgroundView @end
 
+//@interface _LNPopupBarGlassGroupBackground : NSObject <UIObjectTraitDefinition> @end
 
 CF_EXTERN_C_END

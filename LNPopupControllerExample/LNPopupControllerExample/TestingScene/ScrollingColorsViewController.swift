@@ -9,9 +9,11 @@
 import UIKit
 import LNPopupController
 
+@objc public
 class ScrollingColorsViewController: UICollectionViewController {
 	var colors: [UIColor] = []
 	
+	public
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		
@@ -21,33 +23,48 @@ class ScrollingColorsViewController: UICollectionViewController {
 		
 		collectionView.collectionViewLayout = isVertical ? createVerticalGridLayout() : createHorizontalGridLayout()
 		
-		let useCompact = UserDefaults.settings.integer(forKey: .barStyle) == LNPopupBar.Style.compact.rawValue
-		
-		let gridBarButtonItem = UIBarButtonItem()
-		gridBarButtonItem.image = LNSystemImage(isVertical ? "square.grid.3x3.fill" : "rectangle.portrait.fill", scale: useCompact ? .compact : .normal)
-		popupItem.barButtonItems = [gridBarButtonItem]
+		if #available(iOS 26.0, *) {
+			collectionView.topEdgeEffect.isHidden = true
+			collectionView.bottomEdgeEffect.isHidden = true
+		}
 		
 		LNApplyTitleWithSettings(to: self)
 		
 //		collectionView.contentInsetAdjustmentBehavior = .always
 //		collectionView.isDirectionalLockEnabled = true
-		collectionView.automaticallyAdjustsScrollIndicatorInsets = false
 	}
 	
+#if LNPOPUP
+	public
+	override func viewDidMove(toPopupContainerContentView popupContentView: LNPopupContentView?) {
+		super.viewDidMove(toPopupContainerContentView: popupContentView)
+		
+		guard let popupBar = popupPresentationContainer?.popupBar else {
+			return
+		}
+		
+		let useCompact = LNBarIsClassicCompact(popupBar)
+		
+		let gridBarButtonItem = UIBarButtonItem()
+		gridBarButtonItem.image = LNSystemImage(isVertical ? "square.grid.3x3.fill" : "rectangle.portrait.fill", scale: useCompact ? .compact : .normal)
+		popupItem.barButtonItems = [gridBarButtonItem]
+	}
+#endif
+	
+	public
 	override func viewSafeAreaInsetsDidChange() {
 		super.viewSafeAreaInsetsDidChange()
-		
-		collectionView.scrollIndicatorInsets = view.safeAreaInsets
 	}
 	
-	var isVertical: Bool {
-		UserDefaults.settings.integer(forKey: .useScrollingPopupContent) == 10
-	}
+	@objc public
+	var isVertical: Bool = (UserDefaults.settings.integer(forKey: .useScrollingPopupContent) == 10)
 	
+	public
 	override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
 		isVertical ? 1000 : 30
 	}
 	
+	public
 	override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ColorCell", for: indexPath)
 		cell.contentView.backgroundColor = colors[indexPath.item]

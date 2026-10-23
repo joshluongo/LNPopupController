@@ -9,69 +9,130 @@
 #import "LNPopupBar+Private.h"
 #import "_LNPopupSwizzlingUtils.h"
 #import "_LNPopupBase64Utils.hh"
+#import "_LNPopupGlassUtils.h"
+#import "UIView+LNPopupSupportPrivate.h"
 
-#ifndef LNPopupControllerEnforceStrictClean
 static SEL _effectWithStyle_tintColor_invertAutomaticStyle_SEL;
 static id(*_effectWithStyle_tintColor_invertAutomaticStyle)(id, SEL, NSUInteger, UIColor*, BOOL);
+
+static const Class adaptorView = NSClassFromString(LNPopupHiddenString("_UITAMICAdaptorView"));
+const Class __ln_systemButtonBarButtonClass = NSClassFromString(LNPopupHiddenString("_UIButtonBarButton"));
 
 __attribute__((constructor))
 static void __setupFunction(void)
 {
 	_effectWithStyle_tintColor_invertAutomaticStyle_SEL = NSSelectorFromString(LNPopupHiddenString("_effectWithStyle:tintColor:invertAutomaticStyle:"));
-	Method m = class_getClassMethod(UIBlurEffect.class, _effectWithStyle_tintColor_invertAutomaticStyle_SEL);
+	Method m = LNSwizzleClassGetClassMethod(UIBlurEffect.class, _effectWithStyle_tintColor_invertAutomaticStyle_SEL);
 	_effectWithStyle_tintColor_invertAutomaticStyle = reinterpret_cast<decltype(_effectWithStyle_tintColor_invertAutomaticStyle)>(method_getImplementation(m));
+}
+
+@implementation _LNTransitionPopupBar
+
+#if DEBUG
+- (void)setFrame:(CGRect)frame
+{
+	[super setFrame:frame];
 }
 #endif
 
-@implementation _LNPopupBarContentView @end
+@end
 
-@implementation _LNPopupBarTitlesView @end
-
-@implementation _LNPopupTitleLabelWrapper
-
-+ (instancetype)wrapperForLabel:(UILabel*)wrapped
+@implementation _LNPopupBarContentView
 {
-	_LNPopupTitleLabelWrapper* rv = [[_LNPopupTitleLabelWrapper alloc] initWithFrame:wrapped.frame];
-	rv.wrapped = wrapped;
-	
-	rv.translatesAutoresizingMaskIntoConstraints = wrapped.translatesAutoresizingMaskIntoConstraints;
-	[rv addSubview:wrapped];
-	
-	rv.wrappedWidthConstraint = [wrapped.widthAnchor constraintEqualToConstant:rv.bounds.size.width];
-	
-	[NSLayoutConstraint activateConstraints:@[
-		[rv.leadingAnchor constraintEqualToAnchor:wrapped.leadingAnchor],
-		[rv.heightAnchor constraintEqualToAnchor:wrapped.heightAnchor],
-		rv->_wrappedWidthConstraint
-	]];
-	
-	return rv;
+	UIVisualEffectView* _shineEffectView;
+	UIView* _shineMask;
+	_LNPopupTransitionView* _shineTransitionView;
 }
 
-- (void)setBounds:(CGRect)bounds
+- (instancetype)initWithFrame:(CGRect)frame
 {
-	[super setBounds:bounds];
+	return [super initWithFrame:frame];
+}
+
+- (void)layoutSubviews
+{
+	[super layoutSubviews];
 	
-	if(_wrappedWidthConstraint.constant == bounds.size.width)
+	if(@available(iOS 26.0, *))
+	{
+		if(self.isShiny && LNPopupEnvironmentHasGlass())
+		{
+			[self _updateShine];
+		}
+		else
+		{
+			[_shineEffectView removeFromSuperview];
+			[_shineMask removeFromSuperview];
+			[_shineTransitionView removeFromSuperview];
+			_shineEffectView = nil;
+			_shineMask = nil;
+			_shineTransitionView = nil;
+		}
+	}
+}
+
+- (void)setShiny:(BOOL)shiny
+{
+	if(_shiny == shiny)
 	{
 		return;
 	}
 	
-	if(UIView.inheritedAnimationDuration == 0.0)
+	_shiny = shiny;
+	[self setNeedsLayout];
+}
+
+- (void)_updateShine API_AVAILABLE(ios(26.0))
+{
+	CGFloat edge = 0;
+	
+	if(_shineEffectView == nil)
 	{
-		_wrappedWidthConstraint.constant = bounds.size.width;
-		[_wrapped layoutSubviews];
+		auto wrapper = [_LNPopupGlassWrapperEffect wrapperWithEffect:_LNPopupBorrowedGlassEffect.shineEffect];
+		wrapper.disableShadow = YES;
+		wrapper.disableInteractive = YES;
+		
+		_shineEffectView = [[UIVisualEffectView alloc] initWithEffect:wrapper];
+		_shineEffectView.clipsToBounds = YES;
+		_shineEffectView.userInteractionEnabled = NO;
+		[self addSubview:_shineEffectView];
+		
+		_shineMask = [UIView new];
+		_shineMask.backgroundColor = UIColor.clearColor;
+		_shineMask.layer.borderWidth = 1;
+		_shineMask.layer.borderColor = UIColor.whiteColor.CGColor;
+		
+		_shineTransitionView = [[_LNPopupTransitionView alloc] initWithSourceLayer:_shineEffectView.layer.superlayer];
+		_shineTransitionView.matchesTransform = NO;
+		_shineTransitionView.matchesPosition = NO;
+		_shineTransitionView.userInteractionEnabled = NO;
+		[self.effectView.contentView addSubview:_shineTransitionView];
 	}
-	else
+	
+	BOOL isMulti = [NSStringFromClass(_shineEffectView.layer.superlayer.class) containsString:@"Multi"];
+	if(isMulti && _shineTransitionView.sourceLayer != _shineEffectView.layer.superlayer)
 	{
-		[UIView transitionWithView:_wrapped
-						  duration:UIView.inheritedAnimationDuration / 2.0
-						   options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionCurveEaseOut
-						animations:^{
-			_wrappedWidthConstraint.constant = bounds.size.width;
-			[_wrapped layoutSubviews];
-		} completion:nil];
+		_shineTransitionView.sourceLayer = _shineEffectView.layer.superlayer;
+		_shineEffectView.layer.superlayer.mask = _shineMask.layer;
 	}
+	
+	[self sendSubviewToBack:_shineEffectView];
+	[self.effectView.contentView bringSubviewToFront:_shineTransitionView];
+	
+	CGFloat tl = [self.effectView effectiveRadiusForCorner:UIRectCornerTopLeft] + edge;
+	CGFloat tr = [self.effectView effectiveRadiusForCorner:UIRectCornerTopRight] + edge;
+	CGFloat bl = [self.effectView effectiveRadiusForCorner:UIRectCornerBottomLeft] + edge;
+	CGFloat br = [self.effectView effectiveRadiusForCorner:UIRectCornerBottomRight] + edge;
+	
+	UICornerConfiguration* cornerConfiguration = [UICornerConfiguration configurationWithTopLeftRadius:[UICornerRadius fixedRadius:tl] topRightRadius:[UICornerRadius fixedRadius:tr] bottomLeftRadius:[UICornerRadius fixedRadius:bl] bottomRightRadius:[UICornerRadius fixedRadius:br]];
+	
+	_shineEffectView.frame = CGRectInset(self.bounds, -edge, -edge);
+	_shineEffectView.cornerConfiguration = cornerConfiguration;
+	
+	_shineTransitionView.frame = self.effectView.contentView.bounds;
+	
+	_shineMask.frame = _shineEffectView.bounds;
+	_shineMask.cornerConfiguration = cornerConfiguration;
 }
 
 @end
@@ -94,26 +155,119 @@ static void __setupFunction(void)
 
 @end
 
+@interface NSObject ()
+
+- (id)initWithToolbar:(id)arg1;
+
+@end
+
 @implementation _LNPopupToolbar
+
+//+_visualProviderForToolbar:
++ (id)_ln_vPFT:(id)arg1 API_AVAILABLE(ios(26.0))
+{
+	static Class visualProviderClass = NSClassFromString(LNPopupHiddenString("_UIToolbarVisualProviderModernIOS"));
+	
+	return [[visualProviderClass alloc] initWithToolbar:arg1];
+}
+
++ (void)load
+{
+	@autoreleasepool
+	{
+		if(@available(iOS 26.0, *))
+		{
+			Method m = LNSwizzleClassGetClassMethod(self, @selector(_ln_vPFT:));
+			Class metaclass = object_getClass(self);
+			class_addMethod(metaclass, NSSelectorFromString(LNPopupHiddenString("_visualProviderForToolbar:")), method_getImplementation(m), method_getTypeEncoding(m));
+		}
+	}
+}
+
++ (UIView*)_viewForBarButtonItem:(UIBarButtonItem*)barButtonItem
+{
+	UIView* itemView = [barButtonItem valueForKey:@"view"];
+	
+	if([itemView.superview isKindOfClass:adaptorView])
+	{
+		itemView = itemView.superview;
+	}
+	
+	return itemView;
+}
+
+- (BOOL)_isViewDescendantOfToolbarItem:(UIView*)rv
+{
+	if(rv == nil)
+	{
+		return NO;
+	}
+	
+	for(UIBarButtonItem* item in self.items)
+	{
+		UIView* view = [_LNPopupToolbar _viewForBarButtonItem:item];
+		if(view == nil)
+		{
+			continue;
+		}
+		
+		if([rv isDescendantOfView:view])
+		{
+			return YES;
+		}
+	}
+	
+	return NO;
+}
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
 	UIView* rv = [super hitTest:point withEvent:event];
 	
-	if(rv != nil && [rv isKindOfClass:UIControl.class] == NO && [NSStringFromClass(rv.class) containsString:@"BarItemView"] == NO)
+	if([self _isViewDescendantOfToolbarItem:rv])
 	{
-		rv = nil;
+		return rv;
 	}
 	
-	return rv;
+	return nil;
+}
+
+- (void)setItemSpacing:(CGFloat)itemSpacing
+{
+	_itemSpacing = itemSpacing;
+	
+	[self setNeedsLayout];
 }
 
 - (void)layoutSubviews
 {
 	[super layoutSubviews];
 	
-	//On iOS 11 and above reset the semantic content attribute to make sure it propagades to all subviews.
+	//On iOS 11 and above reset the semantic content attribute to make sure it propagates to all subviews.
 	[self setSemanticContentAttribute:self.semanticContentAttribute];
+	
+	static NSString* stackViewKeyPath = LNPopupHiddenString("_visualProvider.contentView.buttonBar.stackView");
+	UIStackView* stackView = [self valueForKeyPath:stackViewKeyPath];
+	stackView.layoutMarginsRelativeArrangement = NO;
+	stackView.baselineRelativeArrangement = NO;
+	
+	static NSString* minimumInterItemSpaceKeyPath = LNPopupHiddenString("_visualProvider.contentView.buttonBar.minimumInterItemSpace");
+	@try {
+		[self setValue:@(_itemSpacing) forKeyPath:minimumInterItemSpaceKeyPath];
+	} @catch(NSException*) {}
+	
+	for(UIView* arrangedSubview in stackView.arrangedSubviews)
+	{
+		if([arrangedSubview isKindOfClass:__ln_systemButtonBarButtonClass] == NO)
+		{
+			continue;
+		}
+		
+		for(UIView* subview in arrangedSubview.subviews)
+		{
+			subview.center = CGPointMake(subview.center.x, CGRectGetMidY(self.bounds));
+		}
+	}
 	
 	[self._layoutDelegate _toolbarDidLayoutSubviews];
 }
@@ -140,18 +294,135 @@ static void __setupFunction(void)
 	[self _deepSetSemanticContentAttribute:semanticContentAttribute toView:self startingFromView:self];
 }
 
+- (UIToolbarAppearance *)standardAppearance
+{
+	return nil;
+}
+
+- (UIToolbarAppearance *)scrollEdgeAppearance
+{
+	return nil;
+}
+
+- (void)forceLayoutOnButtons
+{
+	static NSString* viewKey = LNPopupHiddenString("view");
+	
+	for(UIBarButtonItem* button in self.items)
+	{
+		UIView* view = [button valueForKey:viewKey];
+		[view setNeedsLayout];
+		[view layoutIfNeeded];
+	}
+}
+
 @end
 
-@implementation LNNonMarqueeLabel
+@implementation _LNPopupLayoutBar
 
-- (void)resetLabel {}
-- (void)unpauseLabel {}
-- (void)pauseLabel {}
-- (void)restartLabel {}
-- (void)shutdownLabel {}
-- (BOOL)isPaused { return YES; }
-- (NSTimeInterval)animationDuration { return 0.0; }
-
-@synthesize rate=_rate, animationDelay=_animationDelay, synchronizedLabel=_synchronizedLabel, holdScrolling=_holdScrolling;
+- (void)layoutSubviews
+{
+	[super layoutSubviews];
+	
+	[__layoutDelegate _layoutBarDidLayoutSubviews];
+}
 
 @end
+
+/**
+ A helper view for view controllers without real bottom bars.
+ */
+@implementation _LNPopupBottomBarSupport
+{
+}
+
+- (nonnull instancetype)initWithFrame:(CGRect)frame
+{
+	self = [super initWithFrame:frame];
+	if(self)
+	{
+		self.userInteractionEnabled = NO;
+	}
+	return self;
+}
+
+#if DEBUG
+
+- (void)setFrame:(CGRect)frame
+{
+	[super setFrame:frame];
+}
+
+#endif
+
+@end
+
+@implementation _LNPopupBarExtensionView
+
+#if DEBUG
+
+- (void)didMoveToSuperview
+{
+	[super didMoveToSuperview];
+}
+
+- (void)setAlpha:(CGFloat)alpha
+{
+	[super setAlpha:alpha];
+}
+
+- (void)setHidden:(BOOL)hidden
+{
+	[super setHidden:hidden];
+}
+
+- (void)setFrame:(CGRect)frame
+{
+	[super setFrame:frame];
+}
+
+#endif
+
+@end
+
+@implementation _LNPopupBarProgressView
+
+#if TARGET_OS_MACCATALYST
+- (UITraitCollection *)traitCollection
+{
+	UITraitCollection* rv = [super traitCollection];
+	
+	//Force the use of the Pad visual provider for the progress view.
+	rv = [rv traitCollectionByModifyingTraits:^(id<UIMutableTraits>  _Nonnull mutableTraits) {
+		mutableTraits.userInterfaceIdiom = UIUserInterfaceIdiomPad;
+	}];
+	
+	return rv;
+}
+#endif
+
+@end
+
+//@implementation _LNPopupBarGlassGroupBackground
+//
+//+ (__kindof id<NSObject>)defaultValue
+//{
+//	return nil;
+//}
+//
+//+ (NSString*)identifier
+//{
+//	return @"UIGlassGroupTrait";
+//}
+//
+//+ (NSString*)name
+//{
+//	return @"GlassGroup";
+//}
+//
+//+ (BOOL)_isPrivate
+//{
+//	return YES;
+//}
+//
+//@end

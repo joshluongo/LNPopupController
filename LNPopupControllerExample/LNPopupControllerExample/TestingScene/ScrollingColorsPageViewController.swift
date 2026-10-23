@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import LNPopupController
 
 protocol Indexable {
 	var index: Int { get set }
@@ -17,12 +16,6 @@ class _ScrollingColorsPageViewController<T: UIViewController & Indexable>: UIPag
     override func viewDidLoad() {
         super.viewDidLoad()
 #if LNPOPUP
-		let useCompact = UserDefaults.settings.integer(forKey: .barStyle) == LNPopupBar.Style.compact.rawValue
-		
-		let gridBarButtonItem = UIBarButtonItem()
-		gridBarButtonItem.image = LNSystemImage("rectangle.portrait.fill", scale: useCompact ? .compact : .normal)
-		popupItem.barButtonItems = [gridBarButtonItem]
-		
 		LNApplyTitleWithSettings(to: self)
 #endif
 		
@@ -30,6 +23,22 @@ class _ScrollingColorsPageViewController<T: UIViewController & Indexable>: UIPag
 		
 		setViewControllers([viewController(at: 0)], direction: .forward, animated: false)
     }
+	
+#if LNPOPUP
+	override func viewDidMove(toPopupContainerContentView popupContentView: LNPopupContentView?) {
+		super.viewDidMove(toPopupContainerContentView: popupContentView)
+		
+		guard let popupBar = popupPresentationContainer?.popupBar else {
+			return
+		}
+		
+		let useCompact = LNBarIsClassicCompact(popupBar)
+		
+		let gridBarButtonItem = UIBarButtonItem()
+		gridBarButtonItem.image = LNSystemImage("rectangle.portrait.fill", scale: useCompact ? .compact : .normal)
+		popupItem.barButtonItems = [gridBarButtonItem]
+	}
+#endif
 	
 	var isVertical: Bool {
 		self.navigationOrientation == .vertical
@@ -61,6 +70,15 @@ class _ScrollingColorsPageViewController<T: UIViewController & Indexable>: UIPag
 		}
 		
 		return self.viewController(at: viewController.index + 1)
+	}
+	
+	override func viewDidLayoutSubviews() {
+		super.viewDidLayoutSubviews()
+		
+		if #available(iOS 26.0, *), let scrollView = value(forKey: "scrollView") as? UIScrollView {
+			scrollView.topEdgeEffect.isHidden = true
+			scrollView.bottomEdgeEffect.isHidden = true
+		}
 	}
 	
 	override func viewSafeAreaInsetsDidChange() {

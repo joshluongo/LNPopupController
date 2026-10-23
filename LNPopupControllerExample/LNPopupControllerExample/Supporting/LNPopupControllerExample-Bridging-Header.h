@@ -10,6 +10,10 @@
 #import "SafeSystemImages.h"
 #import "SettingKeys.h"
 #import "DemoPopupContentViewController.h"
+#import "LNPopupControllerExampleSupport.h"
+#import "SceneDelegate.h"
+#import "IntroWebViewController.h"
+#import "LNPopupDemoContextMenuInteraction.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -19,6 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)_effectWithTintColor:(UIColor*)arg1;
 + (instancetype)effectWithBlurRadius:(CGFloat)arg1;
 + (instancetype)effectWithVariableBlurRadius:(CGFloat)arg1 imageMask:(UIImage*)arg2 API_AVAILABLE(ios(17.0));
+
+@end
+
+@interface UIImage ()
+
++ (instancetype)_systemImageNamed:(NSString*)name;
++ (instancetype)_systemImageNamed:(NSString*)name withConfiguration:(nullable UIImageConfiguration *)configuration allowPrivate:(BOOL)allowPrivate;
 
 @end
 

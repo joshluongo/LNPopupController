@@ -9,17 +9,8 @@
 #if LNPOPUP
 import UIKit
 
-class CustomMapBarView: UIView {
-	override var frame: CGRect {
-		didSet {
-			print("Size: \(self.frame)")
-		}
-	}
-}
-
 class CustomMapBarViewController: LNPopupCustomBarViewController {
 	@IBOutlet weak var searchBar: UISearchBar!
-	@IBOutlet var heightConstraint: NSLayoutConstraint!
 
 	override var wantsDefaultTapGestureRecognizer: Bool {
 		return false
@@ -30,7 +21,6 @@ class CustomMapBarViewController: LNPopupCustomBarViewController {
 	}
 	
 	fileprivate func updateConstraint() {
-		heightConstraint.constant = 65
 		self.preferredContentSize = view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
 	}
 	
@@ -41,15 +31,41 @@ class CustomMapBarViewController: LNPopupCustomBarViewController {
 		
 		updateConstraint()
 		
-		guard let bg = (containingPopupBar?.value(forKey: "backgroundView") as? UIView) else {
-			return
+		if #available(iOS 26.0, *), LNPopupSettingsHasOS26Glass() {
+			updateFromUserInterfaceStyle()
+		} else {
+			guard let backgroundView = containingPopupBar?.value(forKey: "backgroundView") as? UIView else {
+				return
+			}
+			
+			backgroundView.clipsToBounds = true
+			backgroundView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+			backgroundView.layer.cornerRadius = 20
+			backgroundView.layer.cornerCurve = .continuous
 		}
+	}
+	
+	override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+		super.traitCollectionDidChange(previousTraitCollection)
 		
-		bg.clipsToBounds = true
-		bg.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-		bg.layer.cornerRadius = 20
-		bg.layer.cornerCurve = .continuous
-		
+		if #available(iOS 26.0, *) {
+			updateFromUserInterfaceStyle()
+		}
+	}
+	
+	@available(iOS 26.0, *)
+	func updateFromUserInterfaceStyle() {
+		containingPopupBar?.standardAppearance.configureWithOpaqueFloatingBackground()
+		if containingPopupBar?.traitCollection.userInterfaceStyle == .dark && ProcessInfo.processInfo.operatingSystemVersion.majorVersion < 27 {
+			searchBar.searchTextField.backgroundColor = .clear
+			let glass = UIGlassEffect(style: .clear)
+			glass.isInteractive = true
+			glass.tintColor = UIColor.systemBackground.withAlphaComponent(0.55)
+			containingPopupBar?.standardAppearance.floatingBackgroundEffect = glass
+		} else {
+			searchBar.searchTextField.backgroundColor = UIColor.lightGray.withAlphaComponent(0.15)
+			containingPopupBar?.standardAppearance.configureWithDefaultFloatingBackground()
+		}
 	}
 	
 	override func viewWillAppear(_ animated: Bool) {

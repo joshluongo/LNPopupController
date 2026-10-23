@@ -7,6 +7,7 @@
 //
 
 #import "DemoGallery.h"
+#import "SettingKeys.h"
 
 #if LNPOPUP
 @import LNPopupController;
@@ -17,16 +18,18 @@
 @interface DemoGalleryToolbar : UIToolbar @end
 @implementation DemoGalleryToolbar @end
 
-@interface SizeClassGalleryCell : UITableViewCell
+@interface EnableableGalleryCell : UITableViewCell
 
 @property (nonatomic, getter=isEnabled) BOOL enabled;
 
 @end
 
-@implementation SizeClassGalleryCell
+@implementation EnableableGalleryCell
 
 -(void)setEnabled:(BOOL)enabled
 {
+	_enabled = enabled;
+	
 	if(enabled)
 	{
 		self.textLabel.textColor = UIColor.labelColor;
@@ -39,11 +42,37 @@
 	}
 }
 
+@end
+
+@interface SizeClassGalleryCell : EnableableGalleryCell @end
+
+@implementation SizeClassGalleryCell
+
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
 	[super traitCollectionDidChange:previousTraitCollection];
 	
-	[self setEnabled:self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular];
+	[self setEnabled:self.traitCollection.userInterfaceIdiom != UIUserInterfaceIdiomPhone || self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular];
+}
+
+@end
+
+@interface OS18GalleryCell : EnableableGalleryCell @end
+
+@implementation OS18GalleryCell
+
+- (void)awakeFromNib
+{
+	[super awakeFromNib];
+	
+	if(@available(iOS 18.0, *))
+	{
+		[self setEnabled:YES];
+	}
+	else
+	{
+		[self setEnabled:NO];
+	}
 }
 
 @end
@@ -67,14 +96,34 @@
 #if LNPOPUP
 	_demoVC = [IntroWebViewController new];
 	
-	self.navigationController.popupBar.barStyle = LNPopupBarStyleFloating;
-	self.navigationController.popupBar.standardAppearance.marqueeScrollDelay = 0.0;
+	if(NSProcessInfo.processInfo.isMacCatalystApp == NO && NSProcessInfo.processInfo.isiOSAppOnMac == NO)
+	{
+		self.navigationController.popupBar.barStyle = LNPopupBarStyleFloating;
+	}
 	self.navigationController.popupBar.standardAppearance.marqueeScrollEnabled = YES;
+	self.navigationController.popupBar.inheritsBottomBarMetrics = NO;
+	self.navigationController.popupBar.progressViewStyle = LNPopupBarProgressViewStyleBottom;
+	if(NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 27.0)
+	{
+		self.navigationController.popupBar.standardAppearance.floatingBarShineEnabled = YES;
+	}
 
-	self.navigationController.view.tintColor = self.navigationController.navigationBar.tintColor;
+	if(!LNPopupSettingsHasOS26Glass())
+	{
+		self.navigationController.view.tintColor = self.navigationController.navigationBar.tintColor;
+	}
 	[self.navigationController presentPopupBarWithContentViewController:_demoVC animated:NO completion:nil];
 	
 	[self.navigationController.popupBar addInteraction:[LNPopupDemoContextMenuInteraction new]];
+#endif
+	
+#if defined(__IPHONE_27_0)
+	if(@available(iOS 27.0, *))
+	{
+		UIBarMinimization* minimization = [UIBarMinimization new];
+		minimization.minimizationBehavior = UIBarMinimizationBehaviorOnScrollDown;
+		self.navigationItem.navigationBarMinimization = minimization;
+	}
 #endif
 }
 
@@ -82,6 +131,11 @@
 {
 	if([identifier hasPrefix:@"split"] && self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
 	{
+		if(self.traitCollection.userInterfaceIdiom != UIUserInterfaceIdiomPhone)
+		{
+			return YES;
+		}
+		
 		[self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:NO];
 		
 		return NO;
@@ -90,12 +144,59 @@
 	return YES;
 }
 
+- (BOOL)tableView:(UITableView *)tableView shouldHighlightRowAtIndexPath:(NSIndexPath *)indexPath
+{
+	EnableableGalleryCell* cell = [tableView cellForRowAtIndexPath:indexPath];
+	if([cell isKindOfClass:EnableableGalleryCell.class] == NO)
+	{
+		return YES;
+	}
+	
+	return cell.isEnabled;
+}
+
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
 	if(segue.destinationViewController.modalPresentationStyle != UIModalPresentationFullScreen)
 	{
 		[self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:YES];
 	}
+	
+	if([segue.identifier isEqualToString:@"Settings"])
+	{
+		segue.destinationViewController.modalPresentationStyle = UIModalPresentationPopover;
+		if(@available(iOS 16.0, *))
+		{
+			segue.destinationViewController.popoverPresentationController.sourceItem = sender;
+		}
+		else
+		{
+			segue.destinationViewController.popoverPresentationController.barButtonItem = sender;
+		}
+	}
+}
+
+@end
+
+@interface LNMusicStoryboardSegue: UIStoryboardSegue @end
+@implementation LNMusicStoryboardSegue
+
+- (instancetype)initWithIdentifier:(NSString *)identifier source:(UIViewController *)source destination:(UIViewController *)destination
+{
+	BOOL disableSearchTab =
+#if LNPOPUP
+	[NSUserDefaults.settingDefaults boolForKey:PopupSettingDisableSearchTab]
+#else
+	YES
+#endif
+	;
+	
+	if(disableSearchTab)
+	{
+		destination = [[UIStoryboard storyboardWithName:@"Music" bundle:nil] instantiateViewControllerWithIdentifier:@"NonSearch"];
+	}
+	
+	return [super initWithIdentifier:identifier source:source destination:destination];
 }
 
 @end

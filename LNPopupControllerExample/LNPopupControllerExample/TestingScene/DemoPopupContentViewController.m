@@ -22,11 +22,14 @@ void LNApplyTitleWithSettings(UIViewController* self)
 	uint32_t titleUpperLimit = 5;
 	
 	uint32_t subtitleLowerLimit = 4;
-	uint32_t subtitleUpperLimit = 16;
+	uint32_t subtitleUpperLimit = 8;
 	
-	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingMarqueeEnabled] == YES)
+	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingLongerLoremIpsumTitles] == YES)
 	{
+		titleLowerLimit = 10;
+		titleUpperLimit = 15;
 		subtitleLowerLimit = 10;
+		subtitleUpperLimit = 20;
 	}
 	
 	self.popupItem.title = [[LoremIpsum wordsWithNumber:arc4random_uniform(titleUpperLimit - titleLowerLimit) + titleLowerLimit] capitalizedString];
@@ -40,7 +43,14 @@ void LNApplyTitleWithSettings(UIViewController* self)
 	
 	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingDisableDemoSceneColors] == NO)
 	{
-		self.popupItem.image = [UIImage imageNamed:@"genre17"];
+		if([NSUserDefaults.settingDefaults integerForKey:PopupSettingTransitionType] == 2)
+		{
+			self.popupItem.image = [UIImage imageNamed:@"genre17"];
+		}
+		else
+		{
+			self.popupItem.image = [UIImage imageNamed:@"genre12"];
+		}
 	}
 	else
 	{
@@ -73,36 +83,20 @@ void LNApplyTitleWithSettings(UIViewController* self)
 	self.view = [DemoPopupContentView new];
 	LNApplyTitleWithSettings(self);
 	[self _updateBackground];
+}
+
+- (void)viewDidLoad
+{
+	[super viewDidLoad];
 	
-	[self updateUserInterfaceStyleOverrideFromCollection:self.traitCollection];
-}
-
-- (void)updateUserInterfaceStyleOverrideFromCollection:(UITraitCollection *)collection
-{
-	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingInvertDemoSceneColors])
-	{
-		self.view.overrideUserInterfaceStyle = collection.userInterfaceStyle == UIUserInterfaceStyleLight ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-	}
-	else
-	{
-		self.view.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
-	}
-}
-
-- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
-{
-	[coordinator animateAlongsideTransitionInView:self.popupPresentationContainerViewController.view animation:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
-		[self updateUserInterfaceStyleOverrideFromCollection:newCollection];
-		[self _setPopupItemButtonsWithTraitCollection:newCollection animated:context.animated];
-		[self updateTransitionViewShadowColor];
-	} completion:nil];
+	[self updateTransitionViewShadowColor];
 	
-	[super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
-}
-
-- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
-{
-	[super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+	if(@available(iOS 17.0, *))
+	{
+		[self registerForTraitChanges:@[LNPopupBarEnvironmentTrait.class, UITraitHorizontalSizeClass.class] withHandler:^(__kindof id<UITraitEnvironment>  _Nonnull traitEnvironment, UITraitCollection * _Nonnull previousCollection) {
+			[traitEnvironment _setPopupItemButtonsWithTraitCollection:self.traitCollection animated:NO];
+		}];
+	}
 }
 
 - (void)_updateBackground
@@ -122,80 +116,18 @@ void LNApplyTitleWithSettings(UIViewController* self)
 	}
 }
 
-- (void)button:(UIBarButtonItem*)button
-{
-	NSLog(@"✓");
-}
-
 - (void)_setPopupItemButtonsWithTraitCollection:(UITraitCollection*)collection animated:(BOOL)animated
 {
-	LNSystemImageScale scale;
-	LNSystemImageScale backForwardScale;
-	if([[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue] == LNPopupBarStyleCompact)
+	if(self.popupPresentationContainerViewController == nil)
 	{
-		scale = LNSystemImageScaleCompact;
-		backForwardScale = LNSystemImageScaleCompact;
-	}
-	else if(UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && collection.horizontalSizeClass == UIUserInterfaceSizeClassRegular)
-	{
-		scale = LNSystemImageScaleLarger;
-		backForwardScale = LNSystemImageScaleLarge;
-	}
-	else
-	{
-		scale = LNSystemImageScaleNormal;
-		backForwardScale = LNSystemImageScaleNormal;
+		return;
 	}
 	
-	UIBarButtonItem* play = LNSystemBarButtonItem(@"pause.fill", scale != LNSystemImageScaleLarger ? scale + 1 : scale, self, @selector(button:));
-	play.accessibilityLabel = NSLocalizedString(@"Pause", @"");
-	play.accessibilityIdentifier = @"PauseButton";
-	play.accessibilityTraits = UIAccessibilityTraitButton;
+	UIAction* action = [UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+		NSLog(@"✓");
+	}];
 	
-	UIBarButtonItem* stop = LNSystemBarButtonItem(@"stop.fill", scale, self, @selector(button:));
-	stop.accessibilityLabel = NSLocalizedString(@"Stop", @"");
-	stop.accessibilityIdentifier = @"StopButton";
-	stop.accessibilityTraits = UIAccessibilityTraitButton;
-	
-	UIBarButtonItem* next = LNSystemBarButtonItem(@"forward.fill", backForwardScale, self, @selector(button:));
-	next.accessibilityLabel = NSLocalizedString(@"Next Track", @"");
-	next.accessibilityIdentifier = @"NextButton";
-	next.accessibilityTraits = UIAccessibilityTraitButton;
-	
-	UIBarButtonItem* prev = LNSystemBarButtonItem(@"backward.fill", backForwardScale, self, @selector(button:));
-	prev.accessibilityLabel = NSLocalizedString(@"Previous Track", @"");
-	prev.accessibilityIdentifier = @"PrevButton";
-	prev.accessibilityTraits = UIAccessibilityTraitButton;
-	
-	UIBarButtonItem* more = LNSystemBarButtonItem(@"ellipsis", scale, self, @selector(button:));
-	prev.accessibilityLabel = NSLocalizedString(@"More", @"");
-	prev.accessibilityIdentifier = @"MoreButton";
-	prev.accessibilityTraits = UIAccessibilityTraitButton;
-	
-	if(scale == LNSystemImageScaleCompact)
-	{
-		if(collection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
-		{
-			[self.popupItem setLeadingBarButtonItems:@[ play ] animated:animated];
-			[self.popupItem setTrailingBarButtonItems:@[ more ] animated:animated];
-		}
-		else
-		{
-			[self.popupItem setLeadingBarButtonItems:@[ prev, play, next ] animated:animated];
-			[self.popupItem setTrailingBarButtonItems:@[ more ] animated:animated];
-		}
-	}
-	else
-	{
-		if(collection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
-		{
-			[self.popupItem setBarButtonItems:@[ play, next ] animated:NO];
-		}
-		else
-		{		
-			[self.popupItem setBarButtonItems:@[ prev, play, next ] animated:NO];
-		}
-	}
+	LNPopupItemSetStandardMusicControls(self.popupItem, self.popupPresentationContainerViewController.popupBar, true, animated, collection, action, action, action);
 }
 
 - (BOOL)prefersStatusBarHidden
@@ -240,10 +172,16 @@ void LNApplyTitleWithSettings(UIViewController* self)
 {
 	[super viewDidMoveToPopupContainerContentView:popupContentView];
 	
+	[self _setPopupItemButtonsWithTraitCollection:self.traitCollection animated:NO];
+	
+	popupContentView.popupInteractionGestureRecognizer.allowsIndirectPointerInteraction = [NSUserDefaults.settingDefaults boolForKey:PopupSettingEnableIndirectPointerInteraction];
+	
 	if(popupContentView == nil)
 	{
 		return;
 	}
+	
+	BOOL isCloseButtonHidden = [NSUserDefaults.settingDefaults integerForKey:PopupSettingCloseButtonStyle] == LNPopupCloseButtonStyleNone;
 	
 	if([NSUserDefaults.settingDefaults integerForKey:PopupSettingTransitionType] == 0)
 	{
@@ -261,13 +199,23 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		NSLayoutConstraint* trailing = [_preferredTransitionView.trailingAnchor constraintGreaterThanOrEqualToAnchor:self.view.layoutMarginsGuide.trailingAnchor];
 		trailing.priority = UILayoutPriorityDefaultHigh;
 		
+		NSLayoutYAxisAnchor* anchorToUse = isCloseButtonHidden ? self.view.safeAreaLayoutGuide.topAnchor : popupContentView.popupCloseButton.bottomAnchor;
+		
+#if defined(__IPHONE_27_1)
+		if(@available(iOS 27.1, *))
+		if(self.traitCollection.verticalBarEdge != UIVerticalBarEdgeUnspecified && popupContentView.effectivePopupCloseButtonPositioning != LNPopupCloseButtonPositioningCenter)
+		{
+			anchorToUse = self.view.safeAreaLayoutGuide.topAnchor;
+		}
+#endif
+		
 		[self.view addSubview:_preferredTransitionView];
 		[NSLayoutConstraint activateConstraints:@[
 			leading,
 			trailing,
 			[_preferredTransitionView.widthAnchor constraintLessThanOrEqualToConstant:400],
 			[_preferredTransitionView.centerXAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.centerXAnchor],
-			[_preferredTransitionView.topAnchor constraintGreaterThanOrEqualToAnchor:popupContentView.popupCloseButton.bottomAnchor constant:20],
+			[_preferredTransitionView.topAnchor constraintGreaterThanOrEqualToAnchor:anchorToUse constant:20],
 			[_preferredTransitionView.widthAnchor constraintEqualToAnchor:_preferredTransitionView.heightAnchor],
 		]];
 	}
@@ -298,13 +246,15 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		NSLayoutConstraint* trailing = [_genericTransitionView.trailingAnchor constraintGreaterThanOrEqualToAnchor:self.view.layoutMarginsGuide.trailingAnchor];
 		trailing.priority = UILayoutPriorityDefaultHigh;
 		
+		NSLayoutYAxisAnchor* anchorToUse = isCloseButtonHidden ? self.view.safeAreaLayoutGuide.topAnchor : popupContentView.popupCloseButton.bottomAnchor;
+		
 		[self.view addSubview:_genericTransitionView];
 		[NSLayoutConstraint activateConstraints:@[
 			leading,
 			trailing,
 			[_genericTransitionView.widthAnchor constraintLessThanOrEqualToConstant:400],
 			[_genericTransitionView.centerXAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.centerXAnchor],
-			[_genericTransitionView.topAnchor constraintGreaterThanOrEqualToAnchor:popupContentView.popupCloseButton.bottomAnchor constant:20],
+			[_genericTransitionView.topAnchor constraintGreaterThanOrEqualToAnchor:anchorToUse constant:20],
 			[_genericTransitionView.widthAnchor constraintEqualToAnchor:_genericTransitionView.heightAnchor],
 		]];
 		
@@ -335,22 +285,31 @@ void LNApplyTitleWithSettings(UIViewController* self)
 	{
 		UILabel* topLabel = [UILabel new];
 		topLabel.text = NSLocalizedString(@"Top", @"");
-		topLabel.textColor = [UIColor systemBackgroundColor];
+		topLabel.textColor = UIColor.labelColor;
 		topLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		topLabel.translatesAutoresizingMaskIntoConstraints = NO;
 		[self.view addSubview:topLabel];
 		
-		NSLayoutConstraint* center = [topLabel.centerXAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.centerXAnchor];
-		center.priority = 500;
+		NSLayoutConstraint* topCenterConstraint = [topLabel.centerXAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.centerXAnchor];
+		NSLayoutConstraint* topCenterButtonAvoidingConstraint = [popupContentView.popupCloseButton.leadingAnchor constraintEqualToAnchor:topLabel.trailingAnchor constant:12];
+		NSLayoutConstraint* constraintToActivate;
+		if(popupContentView.effectivePopupCloseButtonPositioning == LNPopupCloseButtonPositioningCenter)
+		{
+			constraintToActivate = topCenterButtonAvoidingConstraint;
+		}
+		else
+		{
+			constraintToActivate = topCenterConstraint;
+		}
+		
 		[NSLayoutConstraint activateConstraints:@[
 			[topLabel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
-			center,
-			[topLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:popupContentView.popupCloseButton.trailingAnchor constant:8],
+			constraintToActivate
 		]];
 		
 		UILabel* bottomLabel = [UILabel new];
 		bottomLabel.text = NSLocalizedString(@"Bottom", @"");
-		bottomLabel.textColor = [UIColor systemBackgroundColor];
+		bottomLabel.textColor = UIColor.labelColor;
 		bottomLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		bottomLabel.translatesAutoresizingMaskIntoConstraints = NO;
 		[self.view addSubview:bottomLabel];
@@ -362,10 +321,10 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		UILabel* leadingMarginLabel = [UILabel new];
 		leadingMarginLabel.text = NSLocalizedString(@"|-Leading (Margin)", @"");
 		leadingMarginLabel.textAlignment = NSTextAlignmentLeft;
-		leadingMarginLabel.textColor = [UIColor systemBackgroundColor];
+		leadingMarginLabel.textColor = UIColor.labelColor;
 		leadingMarginLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		leadingMarginLabel.adjustsFontForContentSizeCategory = YES;
-		//	leadingMarginLabel.adjustsFontSizeToFitWidth = YES;
+//		leadingMarginLabel.adjustsFontSizeToFitWidth = YES;
 		leadingMarginLabel.numberOfLines = 0;
 		leadingMarginLabel.lineBreakMode = NSLineBreakByWordWrapping;
 		leadingMarginLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -378,10 +337,10 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		UILabel* trailingMarginLabel = [UILabel new];
 		trailingMarginLabel.text = NSLocalizedString(@"Trailing (Margin)-|", @"");
 		trailingMarginLabel.textAlignment = NSTextAlignmentRight;
-		trailingMarginLabel.textColor = [UIColor systemBackgroundColor];
+		trailingMarginLabel.textColor = UIColor.labelColor;
 		trailingMarginLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		trailingMarginLabel.adjustsFontForContentSizeCategory = YES;
-		//	trailingMarginLabel.adjustsFontSizeToFitWidth = YES;
+//		trailingMarginLabel.adjustsFontSizeToFitWidth = YES;
 		trailingMarginLabel.numberOfLines = 0;
 		trailingMarginLabel.lineBreakMode = NSLineBreakByWordWrapping;
 		trailingMarginLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -396,10 +355,10 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		UILabel* leadingSafeAreaLabel = [UILabel new];
 		leadingSafeAreaLabel.text = NSLocalizedString(@"|-Leading (Safe Area)", @"");
 		leadingSafeAreaLabel.textAlignment = NSTextAlignmentLeft;
-		leadingSafeAreaLabel.textColor = [UIColor systemBackgroundColor];
+		leadingSafeAreaLabel.textColor = UIColor.labelColor;
 		leadingSafeAreaLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		leadingSafeAreaLabel.adjustsFontForContentSizeCategory = YES;
-		//	leadingSafeAreaLabel.adjustsFontSizeToFitWidth = YES;
+//		leadingSafeAreaLabel.adjustsFontSizeToFitWidth = YES;
 		leadingSafeAreaLabel.numberOfLines = 0;
 		leadingSafeAreaLabel.lineBreakMode = NSLineBreakByWordWrapping;
 		leadingSafeAreaLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -412,10 +371,10 @@ void LNApplyTitleWithSettings(UIViewController* self)
 		UILabel* trailingSafeAreaLabel = [UILabel new];
 		trailingSafeAreaLabel.text = NSLocalizedString(@"Trailing (Safe Area)-|", @"");
 		trailingSafeAreaLabel.textAlignment = NSTextAlignmentRight;
-		trailingSafeAreaLabel.textColor = [UIColor systemBackgroundColor];
+		trailingSafeAreaLabel.textColor = UIColor.labelColor;
 		trailingSafeAreaLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
 		trailingSafeAreaLabel.adjustsFontForContentSizeCategory = YES;
-		//	trailingSafeAreaLabel.adjustsFontSizeToFitWidth = YES;
+//		trailingSafeAreaLabel.adjustsFontSizeToFitWidth = YES;
 		trailingSafeAreaLabel.numberOfLines = 0;
 		trailingSafeAreaLabel.lineBreakMode = NSLineBreakByWordWrapping;
 		trailingSafeAreaLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -443,6 +402,14 @@ void LNApplyTitleWithSettings(UIViewController* self)
 //		[self.view.safeAreaLayoutGuide.centerXAnchor constraintEqualToAnchor:customCloseButton.centerXAnchor],
 //		[self.view.safeAreaLayoutGuide.centerYAnchor constraintEqualToAnchor:customCloseButton.centerYAnchor],
 //	]];
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+	[super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+	[coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+		[self _setPopupItemButtonsWithTraitCollection:self.traitCollection animated:context.isAnimated];
+	} completion:nil];
 }
 
 - (nullable UIView*)viewForPopupTransitionFromPresentationState:(LNPopupPresentationState)fromState toPresentationState:(LNPopupPresentationState)toState
@@ -539,7 +506,31 @@ void LNApplyTitleWithSettings(UIViewController* self)
 
 - (BOOL)prefersHomeIndicatorAutoHidden
 {
-	return YES;
+//	return YES;
+	return NO;
+}
+
+#if defined(__IPHONE_27_1)
+- (UIVerticalBarBehavior)preferredVerticalBarBehavior
+{
+	return [NSUserDefaults.settingDefaults integerForKey:PopupSettingDuoVerticalBarBehavior];
+}
+#endif
+
+@end
+
+@implementation DemoPopupContentViewController (Deprecated)
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+	[super traitCollectionDidChange:previousTraitCollection];
+	
+	if(@available(iOS 17.0, *))
+	{
+		return;
+	}
+	
+	[self _setPopupItemButtonsWithTraitCollection:self.traitCollection animated:NO];
 }
 
 @end

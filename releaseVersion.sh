@@ -40,8 +40,11 @@ echo -e "\033[1;34mUpdating framework version\033[0m"
 
 /usr/libexec/PlistBuddy LNPopupController/Info.plist -c "Set CFBundleShortVersionString $NEXT_VERSION" -c "Set CFBundleVersion 1"
 /usr/libexec/PlistBuddy LNPopupControllerExample/LNPopupControllerExample/Info.plist -c "Set CFBundleShortVersionString $NEXT_VERSION" -c "Set CFBundleVersion 1"
+sed -i '' "s|// LNPopupController:[0-9.]*|// LNPopupController:$NEXT_VERSION|g" Package.swift
 
 echo -e "\033[1;34mCommitting all changes to Git for release $NEXT_VERSION\033[0m"
+
+rm -f .git/index.lock
 
 git add -A
 git commit -m "$NEXT_VERSION"

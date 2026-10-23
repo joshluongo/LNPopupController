@@ -1,5 +1,8 @@
-name: "Feature Request"
-description: "Suggest an idea for this project."
+name: "Feature Request / Enhancement"
+description: | 
+  Suggest an idea for this project.
+  
+  Only humans should apply. If I detect LLM slop, the issue will be closed immediately.
 labels: [enhancement]
 body:
   - type: textarea
@@ -19,4 +22,4 @@ body:
       label: "Additional Context:"
       description: "Add any other context or screenshots about the feature request here."
     validations:
-      required: true
+      required: false

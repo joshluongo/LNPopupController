@@ -7,7 +7,7 @@
 //
 
 #import "LNPopupItem+Private.h"
-#import "LNPopupController.h"
+#import "LNPopupControllerImpl.h"
 #import "_LNPopupSwizzlingUtils.h"
 
 static void* _LNPopupItemObservationContext = &_LNPopupItemObservationContext;
@@ -28,7 +28,10 @@ NSArray* __LNPopupItemObservedKeys;
 {
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		__LNPopupItemObservedKeys = [LNPopupGetPropertyNames(self, nil) arrayByAddingObjectsFromArray:@[@"accessibilityHint", @"accessibilityLabel"]];
+		NSMutableArray* keys = [LNPopupGetPropertyNames(self, nil, NO) mutableCopy];
+		[keys addObjectsFromArray:@[@"accessibilityHint", @"accessibilityLabel"]];
+		[keys removeObjectsInArray:@[@"leftBarButtonItems", @"rightBarButtonItems"]];
+		__LNPopupItemObservedKeys = keys;
 	});
 }
 
@@ -38,6 +41,7 @@ NSArray* __LNPopupItemObservedKeys;
 	
 	if(self)
 	{
+		_identifier = NSUUID.UUID.UUIDString;
 		[__LNPopupItemObservedKeys enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 			[self addObserver:self forKeyPath:obj options:NSKeyValueObservingOptionNew context:_LNPopupItemObservationContext];
 		}];
@@ -68,7 +72,7 @@ NSArray* __LNPopupItemObservedKeys;
 
 - (NSString *)title
 {
-	if(_title == nil && _subtitle == nil)
+	if(_title == nil && _subtitle == nil && _attributedTitle == nil && _attributedSubtitle == nil)
 	{
 		return self._containerController.title;
 	}
@@ -104,7 +108,7 @@ NSArray* __LNPopupItemObservedKeys;
 		return;
 	}
 	
-	_title = nil;
+	_title = [attributedTitle.string copy];
 	_attributedTitle = [attributedTitle copy];
 	
 	if(self.swiftuiTitleContentView != nil)
@@ -141,7 +145,7 @@ NSArray* __LNPopupItemObservedKeys;
 		return;
 	}
 	
-	_subtitle = nil;
+	_subtitle = [attributedSubtitle.string copy];
 	_attributedSubtitle = [attributedSubtitle copy];
 	
 	if(self.swiftuiTitleContentView != nil)
@@ -152,35 +156,81 @@ NSArray* __LNPopupItemObservedKeys;
 
 - (void)setSwiftuiTitleContentView:(UIView *)swiftuiTitleContentView
 {
+	if(_swiftuiTitleContentView == swiftuiTitleContentView)
+	{
+		return;
+	}
+	
 	_swiftuiTitleContentView = swiftuiTitleContentView;
 	
-	if(self.title != nil)
+	if(_swiftuiTitleContentView != nil)
 	{
-		self.title = nil;
+		if(self.title != nil)
+		{
+			self.title = nil;
+		}
+		if(self.attributedTitle != nil)
+		{
+			self.attributedTitle = nil;
+		}
 	}
-	if(self.attributedTitle != nil)
+}
+
+- (void)setSwiftuiTitleContentViewController:(UIViewController*)swiftuiTitleContentViewController
+{
+	if(_swiftuiTitleContentViewController == swiftuiTitleContentViewController)
 	{
-		self.attributedTitle = nil;
+		return;
+	}
+	
+	_swiftuiTitleContentViewController = swiftuiTitleContentViewController;
+	
+	if(_swiftuiTitleContentViewController != nil)
+	{
+		if(self.title != nil)
+		{
+			self.title = nil;
+		}
+		if(self.attributedTitle != nil)
+		{
+			self.attributedTitle = nil;
+		}
 	}
 }
 
 - (void)setImage:(UIImage *)image
 {
+	if(_image == image)
+	{
+		return;
+	}
+	
 	_image = image;
 	
-	if(self.swiftuiImageController != nil)
+	if(_image != nil)
 	{
-		self.swiftuiImageController = nil;
+		if(self.swiftuiImageController != nil)
+		{
+			self.swiftuiImageController = nil;
+		}
 	}
 }
 
 - (void)setSwiftuiImageController:(UIViewController *)swiftuiImageController
 {
+	if(_swiftuiImageController == swiftuiImageController)
+	{
+		return;
+	}
+	
 	_swiftuiImageController = swiftuiImageController;
 	
-	if(self.image != nil)
+	if(_swiftuiImageController != nil)
 	{
-		self.image = nil;
+		if(self.image != nil)
+		{
+			self.image = nil;
+		}
 	}
 }
 
@@ -193,12 +243,18 @@ NSArray* __LNPopupItemObservedKeys;
 
 - (NSArray<UIBarButtonItem *> *)barButtonItems
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	return self.trailingBarButtonItems;
+#pragma clang diagnostic pop
 }
 
 - (void)setBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	self.trailingBarButtonItems = barButtonItems;
+#pragma clang diagnostic pop
 }
 
 - (void)setBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems animated:(BOOL)animated
@@ -219,6 +275,11 @@ NSArray* __LNPopupItemObservedKeys;
 	[LNPopupBar setAnimatesItemSetter:NO];
 }
 
+- (void)setTrailingBarButtonItems:(NSArray<UIBarButtonItem *> *)trailingBarButtonItems
+{
+	_trailingBarButtonItems = trailingBarButtonItems;
+}
+
 - (void)setTrailingBarButtonItems:(NSArray<UIBarButtonItem *> *)trailingBarButtonItems animated:(BOOL)animated
 {
 	[LNPopupBar setAnimatesItemSetter:animated];
@@ -226,6 +287,41 @@ NSArray* __LNPopupItemObservedKeys;
 	[self setTrailingBarButtonItems:trailingBarButtonItems];
 	
 	[LNPopupBar setAnimatesItemSetter:NO];
+}
+
+- (NSString*)_titleDescription
+{
+	if(self.swiftuiTitleContentViewController != nil)
+	{
+		return [NSString stringWithFormat:@"titleView: %@", self.swiftuiTitleContentViewController];
+	}
+	
+	return [NSString stringWithFormat:@"title: “%@” subtitle: “%@”", self.title, self.subtitle];
+}
+
+- (NSString*)_barItemDescription
+{
+	if(self.leadingBarButtonItems)
+	{
+		return [NSString stringWithFormat:@"leadingButtons: %@ trailingButtons: %@", [NSString stringWithFormat:@"<%@: %p>", _leadingBarButtonItems.class, _leadingBarButtonItems], _trailingBarButtonItems != nil ? [NSString stringWithFormat:@"<%@: %p>", _trailingBarButtonItems.class, _trailingBarButtonItems] : @"<none>"];
+	}
+	
+	return [NSString stringWithFormat:@"buttons: %@", _trailingBarButtonItems != nil ? [NSString stringWithFormat:@"<%@: %p>", _trailingBarButtonItems.class, _trailingBarButtonItems] : @"<none>"];
+}
+
+- (NSString*)_imageDescription
+{
+	return [(self.swiftuiImageController ?: self.image) description];
+}
+
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<%@: %p %@ %@ image: %@>", NSStringFromClass(self.class), self, self._titleDescription, self._barItemDescription, self._imageDescription];
+}
+
+- (NSString *)debugDescription
+{
+	return self.description;
 }
 
 @end

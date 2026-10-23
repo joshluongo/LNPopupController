@@ -17,14 +17,31 @@
 #import "LNSplitViewController.h"
 #if LNPOPUP
 #import "LNPopupControllerExample-Swift.h"
+#else
+#import "LNPopupControllerExampleNoPopup-Swift.h"
 #endif
 #import "LNPopupDemoContextMenuInteraction.h"
 #import "LNPopupControllerExample-Bridging-Header.h"
 @import UIKit;
 
+#if !LNPOPUP
+
+@interface LNTabBarAccessoryView: UIView @end
+@implementation LNTabBarAccessoryView
+
+- (void)setFrame:(CGRect)frame
+{
+	[super setFrame:frame];
+}
+
+@end
+
+#endif
+
 @interface UIImage ()
 
-+ (instancetype)_systemImageNamed:(NSString*)arg1;
++ (instancetype)_systemImageNamed:(NSString*)name;
++ (instancetype)_systemImageNamed:(NSString*)name withConfiguration:(nullable UIImageConfiguration *)configuration allowPrivate:(BOOL)allowPrivate;
 
 @end
 
@@ -56,7 +73,8 @@
 
 @implementation DemoViewController
 {
-	__weak IBOutlet UIButton *_galleryButton;
+	__weak IBOutlet UIBarButtonItem *_galleryBarButton;
+	UIButton* _galleryButton;
 	__weak IBOutlet UIButton *_nextButton;
 	
 	__weak IBOutlet UIBarButtonItem *_barStyleButton;
@@ -86,8 +104,29 @@
 			target = self.navigationController;
 		}
 		
-		//This is safe even with the UITab API, because this will be accessed very early on, when loaded from storyboard.
-		super.tabBarItem.image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%lu.square.fill", [self.tabBarController.viewControllers indexOfObject:target] + 1]];
+		NSInteger idx = [self.tabBarController.viewControllers indexOfObject:target] + 1;
+		
+		BOOL isCustomContainer = NO;
+		if(@available(iOS 18.0, *))
+		{
+			isCustomContainer = [self.tabBarController isKindOfClass:LNCustomContainerController.class];
+		}
+		if(idx != 4 || self.navigationController == nil || NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 26 || isCustomContainer)
+		{
+			//This is safe even with the UITab API, because this will be accessed very early on, when loaded from storyboard.
+			super.tabBarItem.image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%lu.square.fill", idx]];
+		}
+		else
+		{
+			if(super.tabBarItem.tag != 1)
+			{
+				self.navigationItem.searchController = [UISearchController new];
+				
+				super.tabBarItem = [[UITabBarItem alloc] initWithTabBarSystemItem:UITabBarSystemItemSearch tag:1];
+				super.tabBarItem.image = [UIImage systemImageNamed:@"magnifyingglass"];
+				super.tabBarItem.title = NSLocalizedString(@"Search", @"");
+			}
+		}
 	}
 	
 	return super.tabBarItem;
@@ -115,9 +154,63 @@
 	}
 }
 
+- (void)updatePopupContentViewAppearanceOverrideWithTraitCollection:(UITraitCollection*)traitCollection
+{
+	_barStyleButton.image = [UIImage _systemImageNamed:@"appearance"];
+	if(_barStyleButton.image != nil)
+	{
+		if(@available(iOS 17.0, *))
+		{
+			_barStyleButton.symbolAnimationEnabled = YES;
+		}
+		_barStyleButton.title = nil;
+		
+#if defined(__IPHONE_27_1)
+		if(@available(iOS 27.1, *))
+		{
+			_barStyleButton.axisBehavior = [NSUserDefaults.settingDefaults integerForKey:PopupSettingDuoBarButtonItemAxisBehavior];
+		}
+#endif
+	}
+	
+#if LNPOPUP
+	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingInvertDemoSceneColors])
+	{
+		self._targetVCForPopup.popupContentViewController.overrideUserInterfaceStyle = traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+	}
+	else
+	{
+		self._targetVCForPopup.popupContentViewController.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+	}
+#endif
+}
+
 - (void)viewDidLoad
 {
 	[super viewDidLoad];
+	
+	if(@available(iOS 18.0, *))
+	if(NSProcessInfo.processInfo.isMacCatalystApp || NSProcessInfo.processInfo.isiOSAppOnMac)
+	{
+		self.tabBarController.tabBarHidden = YES;
+	}
+	
+	if(@available(iOS 17.0, *))
+	{
+		[self registerForTraitChanges:@[UITraitUserInterfaceStyle.class] withHandler:^(__kindof id<UITraitEnvironment>  _Nonnull traitEnvironment, UITraitCollection * _Nonnull previousCollection) {
+			[traitEnvironment updatePopupContentViewAppearanceOverrideWithTraitCollection:traitEnvironment.traitCollection];
+		}];
+	}
+	[self updatePopupContentViewAppearanceOverrideWithTraitCollection:self.traitCollection];
+	
+	if(LNPopupSettingsHasOS26Glass())
+	{
+		_galleryBarButton.title = nil;
+	}
+	else
+	{
+		_galleryBarButton.image = nil;
+	}
 	
 	[self updateNavigationBarTitlePositionForTraitCollection:self.traitCollection];
 	
@@ -135,9 +228,13 @@
 			NSUInteger tabIdx = self.tabIndexInAncestorTabBarController;
 			self.colorSeedString = [NSString stringWithFormat:@"tab_%@", @(tabIdx)];
 		}
+		else if(self.navigationController != nil)
+		{
+			self.colorSeedString = [NSString stringWithFormat:@"nil"];
+		}
 		else
 		{
-			self.colorSeedString = @"nil";
+			self.colorSeedString = @"ZviewZz";
 		}
 		self.colorSeedCount = 0;
 	}
@@ -154,6 +251,68 @@
 	
 	[self updateHideTabBarButtonHiddenStateForTraitCollection:self.traitCollection];
 	
+	UIButtonConfiguration* config;
+	if(@available(iOS 26.0, *))
+	{
+		if(LNPopupSettingsHasOS26Glass())
+		{
+			config = [UIButtonConfiguration prominentGlassButtonConfiguration];
+		}
+		else
+		{
+			config = [UIButtonConfiguration borderlessButtonConfiguration];
+			config.baseForegroundColor = self.view.tintColor;
+		}
+	}
+	else
+	{
+		config = [UIButtonConfiguration borderlessButtonConfiguration];
+		config.baseForegroundColor = self.view.tintColor;
+	}
+	
+	if(LNPopupSettingsHasOS26Glass())
+	{
+		config.image = [UIImage systemImageNamed:@"xmark"];
+	}
+	else
+	{
+		config.attributedTitle = [[NSAttributedString alloc] initWithString:NSLocalizedString(@"Gallery", @"") attributes:@{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline]}];
+	}
+	
+	UIFont* fontToUse = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+	fontToUse = [UIFont fontWithDescriptor:[fontToUse.fontDescriptor fontDescriptorByAddingAttributes:@{
+		UIFontDescriptorTraitsAttribute: @{ UIFontWeightTrait: @(UIFontWeightMedium) }
+	}] size:fontToUse.pointSize];
+	config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithFont:fontToUse scale:UIImageSymbolScaleLarge];
+	
+	_galleryButton = [UIButton buttonWithConfiguration:config primaryAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+		[self performSegueWithIdentifier:@"UnwindSegue" sender:nil];
+	}]];
+	_galleryButton.translatesAutoresizingMaskIntoConstraints = NO;
+	
+	NSLayoutConstraint* x = [self.view.safeAreaLayoutGuide.topAnchor constraintEqualToAnchor:_galleryButton.topAnchor constant:LNPopupSettingsHasOS26Glass() ? 6 : -1];
+	x.priority = UILayoutPriorityRequired - 10;
+	
+	[self.view addSubview:_galleryButton];
+	[NSLayoutConstraint activateConstraints:@[
+		[self.view.safeAreaLayoutGuide.trailingAnchor constraintEqualToAnchor:_galleryButton.trailingAnchor constant:LNPopupSettingsHasOS26Glass() ? 20 : 8],
+		x
+	]];
+	
+	if(LNPopupSettingsHasOS26Glass())
+	{
+		NSLayoutConstraint* y = [self.view.topAnchor constraintLessThanOrEqualToAnchor:_galleryButton.topAnchor constant:-10];
+		y.priority = UILayoutPriorityRequired;
+		y.active = YES;
+		
+		[NSLayoutConstraint activateConstraints:@[
+			[_galleryButton.widthAnchor constraintEqualToConstant:44],
+			[_galleryButton.heightAnchor constraintEqualToConstant:44],
+		]];
+	}
+	
+//	UIViewController* settings = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingColors"];
+//	UIViewController* settings = [self.storyboard instantiateViewControllerWithIdentifier:@"VerticalPagedScrollingColors"];
 //	UIViewController* settings = [self.storyboard instantiateViewControllerWithIdentifier:@"Settings"];
 //	[self addChildViewController:settings];
 //	[self.view insertSubview:settings.view atIndex:0];
@@ -161,11 +320,18 @@
 //	[settings didMoveToParentViewController:self];
 }
 
+#if defined(__IPHONE_27_1)
+- (UIVerticalBarBehavior)preferredVerticalBarBehavior
+{
+	return [NSUserDefaults.settingDefaults integerForKey:PopupSettingDuoVerticalBarBehavior];
+}
+#endif
+
 - (void)updateNavigationBarTitlePositionForTraitCollection:(UITraitCollection*)traitCollection
 {
 	if(@available(iOS 18.0, *))
 	{
-		if(self.tabBarController == nil || UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad || traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
+		if([self.tabBarController isKindOfClass:LNCustomContainerController.class] == YES || self.tabBarController == nil || UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad || traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact)
 		{
 			_hideTabBarButton.image = [UIImage systemImageNamed:@"dock.rectangle"];
 			self.navigationItem.backButtonDisplayMode = UINavigationItemBackButtonDisplayModeGeneric;
@@ -185,16 +351,24 @@
 	[super viewSafeAreaInsetsDidChange];
 }
 
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-	[super traitCollectionDidChange:previousTraitCollection];
-	
-	[self updateBottomDockingViewEffectForBarPresentation];
-}
-
 - (void)viewIsAppearing:(BOOL)animated
 {
 	[super viewIsAppearing:animated];
+	
+	if(self.isInSearchTab)
+	{
+		self.navigationItem.title = self.navigationItem.searchController != nil ? NSLocalizedString(@"Search", @"") : NSLocalizedString(@"Search Result", @"");
+	
+		if([NSUserDefaults.settingDefaults boolForKey:PopupSettingDisableDemoSceneColors] == NO)
+		{
+			NSString* seed = [NSString stringWithFormat:@"%@%@", self.colorSeedString, self.colorSeedCount == 0 ? @"" : [NSString stringWithFormat:@"%@", @(self.colorSeedCount)]];
+			self.view.backgroundColor = LNSeedAdaptiveSubduedColor(seed);
+		}
+		else
+		{
+			self.view.backgroundColor = UIColor.systemBackgroundColor;
+		}
+	}
 	
 	[self updateBottomDockingViewEffectForBarPresentation];
 	
@@ -205,7 +379,6 @@
 	//Ugly hack to fix navigation view controller tint color.
 	self.navigationController.view.tintColor = self.view.tintColor;
 	
-	_galleryButton.titleLabel.adjustsFontForContentSizeCategory = YES;
 	_nextButton.titleLabel.adjustsFontForContentSizeCategory = YES;
 	
 	_galleryButton.hidden = [self.parentViewController isKindOfClass:[UINavigationController class]];
@@ -217,9 +390,21 @@
 	}
 }
 
+- (void)updatePopupCloseButtonTintColor
+{
+#if LNPOPUP
+	if(self._targetVCForPopup.popupContentView.popupCloseButton.effectiveStyle == LNPopupCloseButtonStyleProminentGlass)
+	{
+		self._targetVCForPopup.popupContentView.popupCloseButton.tintColor = self.view.backgroundColor;
+	}
+#endif
+}
+
 - (void)viewDidAppear:(BOOL)animated
 {
 	[super viewDidAppear:animated];
+	
+	[self updatePopupCloseButtonTintColor];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -234,6 +419,12 @@
 
 - (void)updateHideTabBarButtonHiddenStateForTraitCollection:(UITraitCollection*)traitCollection;
 {
+	if(self.tabBarController != nil && (NSProcessInfo.processInfo.isMacCatalystApp || NSProcessInfo.processInfo.isiOSAppOnMac))
+	{
+		_hideTabBarButton.hidden = YES;
+		return;
+	}
+	
 	if(@available(iOS 18.0, *))
 	{
 		if(traitCollection == nil)
@@ -241,18 +432,21 @@
 			traitCollection = self.traitCollection;
 		}
 		
+		BOOL isCustomContainer = [self.tabBarController isKindOfClass:LNCustomContainerController.class];
+		BOOL canHaveSidebar = isCustomContainer == NO && UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular;
+		
 		if(self.tabBarController != nil)
 		{
-			[self.navigationItem setHidesBackButton:self.tabBarController.sidebar.isHidden == NO];
+			[self.navigationItem setHidesBackButton:canHaveSidebar && self.tabBarController.sidebar.isHidden == NO];
 		}
 		
 		BOOL isFirst = [self.navigationController.viewControllers indexOfObject:self] == 0;
 		BOOL isTNil = self.tabBarController == nil;
 		BOOL isNNil = self.navigationController == nil;
-		BOOL canHaveSidebar = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad && traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular;
+		BOOL isSNil = self.splitViewController == nil;
 		BOOL isSidebarHidden = self.tabBarController.sidebar.isHidden;
 		
-		_hideTabBarButton.hidden = isFirst == NO || isNNil || (!isTNil && canHaveSidebar && isSidebarHidden == NO);
+		_hideTabBarButton.hidden = isCustomContainer == YES || isSNil == NO || isFirst == NO || isNNil || (!isTNil && canHaveSidebar && isSidebarHidden == NO);
 	}
 	else
 	{
@@ -267,17 +461,11 @@
 	}
 }
 
-- (void)viewWillLayoutSubviews
+- (void)viewDidLayoutSubviews
 {
-	[super viewWillLayoutSubviews];
+	[super viewDidLayoutSubviews];
 	
-	if(@available(iOS 18.0, *))
-	{
-		if(self.tabBarController != nil)
-		{
-			[self updateHideTabBarButtonHiddenStateForTraitCollection:self.traitCollection];
-		}
-	}
+	[self updateHideTabBarButtonHiddenStateForTraitCollection:self.traitCollection];
 }
 
 - (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
@@ -286,6 +474,7 @@
 	
 	[coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
 		[self updateNavigationBarTitlePositionForTraitCollection:newCollection];
+		[self updatePopupContentViewAppearanceOverrideWithTraitCollection:newCollection];
 	} completion:nil];
 }
 
@@ -298,11 +487,6 @@
 {
 	UIUserInterfaceStyle currentStyle = self.navigationController.traitCollection.userInterfaceStyle;
 	self.navigationController.overrideUserInterfaceStyle = currentStyle == UIUserInterfaceStyleLight ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-	self.navigationController.toolbar.tintColor = LNRandomSystemColor();
-	[self.navigationController.toolbar.items enumerateObjectsUsingBlock:^(UIBarButtonItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-		obj.tintColor = self.navigationController.toolbar.tintColor;
-	}];
-	self.navigationController.navigationBar.tintColor = self.navigationController.toolbar.tintColor;
 #if LNPOPUP
 	[self.navigationController setNeedsPopupBarAppearanceUpdate];
 #endif
@@ -310,69 +494,77 @@
 
 - (void)updateBottomDockingViewEffectForBarPresentation
 {
-	UINavigationBarAppearance* nba = nil;
-	
-	BOOL disableScrollEdgeAppearance = [NSUserDefaults.settingDefaults boolForKey:PopupSettingDisableScrollEdgeAppearance];
-	if(disableScrollEdgeAppearance)
+	if(LNPopupSettingsHasOS26Glass())
 	{
-		nba = [UINavigationBarAppearance new];
-		[nba configureWithDefaultBackground];
+		return;
 	}
 	
-#if LNPOPUP
-	LNPopupBarStyle popupBarStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue];
-	if(popupBarStyle == LNPopupBarStyleFloating || (popupBarStyle == LNPopupBarStyleDefault && NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 17))
-#endif
+	if(LNPopupSettingsHasOS26Glass() == NO)
 	{
-		UIBlurEffectStyle style;
-		if(NSProcessInfo.processInfo.isMacCatalystApp || NSProcessInfo.processInfo.isiOSAppOnMac)
+		UINavigationBarAppearance* nba = nil;
+		
+		BOOL disableScrollEdgeAppearance = [NSUserDefaults.settingDefaults boolForKey:PopupSettingDisableScrollEdgeAppearance];
+		if(disableScrollEdgeAppearance)
 		{
-			style = UIBlurEffectStyleSystemThickMaterial;
-		}
-		else
-		{
-			style = UIBlurEffectStyleSystemThinMaterial;
+			nba = [UINavigationBarAppearance new];
+			[nba configureWithDefaultBackground];
 		}
 		
-		UIBlurEffect* effect = [UIBlurEffect effectWithStyle:style];
-		
 #if LNPOPUP
-		nba.backgroundEffect = effect;
+		LNPopupBarStyle popupBarStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue];
+		if(popupBarStyle == LNPopupBarStyleFloating || popupBarStyle == LNPopupBarStyleFloatingCompact || (popupBarStyle == LNPopupBarStyleDefault && NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 17))
 #endif
+		{
+			UIBlurEffectStyle style;
+			if(NSProcessInfo.processInfo.isMacCatalystApp || NSProcessInfo.processInfo.isiOSAppOnMac)
+			{
+				style = UIBlurEffectStyleSystemThickMaterial;
+			}
+			else
+			{
+				style = UIBlurEffectStyleSystemThinMaterial;
+			}
+			
+			UIBlurEffect* effect = [UIBlurEffect effectWithStyle:style];
+			
+#if LNPOPUP
+			nba.backgroundEffect = effect;
+#endif
+			
+			UITabBarAppearance* tba = [UITabBarAppearance new];
+			[tba configureWithDefaultBackground];
+			tba.backgroundEffect = effect;
+			self.tabBarController.tabBar.standardAppearance = tba;
+			
+			UIToolbarAppearance* ta = [UIToolbarAppearance new];
+			[ta configureWithDefaultBackground];
+			ta.backgroundEffect = effect;
+			self.navigationController.toolbar.standardAppearance = ta;
+		}
 		
-		UITabBarAppearance* tba = [UITabBarAppearance new];
-		[tba configureWithDefaultBackground];
-		tba.backgroundEffect = effect;
-		self.tabBarController.tabBar.standardAppearance = tba;
+		self.navigationController.navigationBar.scrollEdgeAppearance = nba;
+		self.navigationController.navigationBar.compactScrollEdgeAppearance = nba;
 		
-		UIToolbarAppearance* ta = [UIToolbarAppearance new];
-		[ta configureWithDefaultBackground];
-		ta.backgroundEffect = effect;
-		self.navigationController.toolbar.standardAppearance = ta;
+		UITabBarAppearance* tba = nil;
+		if(disableScrollEdgeAppearance)
+		{
+			tba = [[UITabBarAppearance alloc] initWithBarAppearance:nba];
+		}
+		self.tabBarController.tabBar.scrollEdgeAppearance = tba;
+		
+		UIToolbarAppearance* ta = nil;
+		if(disableScrollEdgeAppearance)
+		{
+			ta = [[UIToolbarAppearance alloc] initWithBarAppearance:nba];
+		}
+		self.navigationController.toolbar.scrollEdgeAppearance = ta;
+		self.navigationController.toolbar.compactScrollEdgeAppearance = ta;
 	}
-	
-	self.navigationController.navigationBar.scrollEdgeAppearance = nba;
-	self.navigationController.navigationBar.compactScrollEdgeAppearance = nba;
-	
-	UITabBarAppearance* tba = nil;
-	if(disableScrollEdgeAppearance)
-	{
-		tba = [[UITabBarAppearance alloc] initWithBarAppearance:nba];
-	}
-	self.tabBarController.tabBar.scrollEdgeAppearance = tba;
-	
-	UIToolbarAppearance* ta = nil;
-	if(disableScrollEdgeAppearance)
-	{
-		ta = [[UIToolbarAppearance alloc] initWithBarAppearance:nba];
-	}
-	self.navigationController.toolbar.scrollEdgeAppearance = ta;
-	self.navigationController.toolbar.compactScrollEdgeAppearance = ta;
 }
 
 - (UIViewController*)_targetVCForPopup
 {
-	void (^block)(NSString*) = ^ (NSString* title) {
+	void (^block)(DemoViewController* ,NSString*) = ^ (DemoViewController* self, NSString* title) {
 		self->_hideTabBarButton.enabled = NO;
 		if(@available(iOS 16.0, *))
 		{
@@ -393,7 +585,7 @@
 	if([self.splitViewController isKindOfClass:LNSplitViewControllerPrimaryPopup.class] && self.navigationController != [self.splitViewController viewControllerForColumn:UISplitViewControllerColumnPrimary])
 	{
 		self.view.backgroundColor = UIColor.systemBackgroundColor;
-		block(NSLocalizedString(@"Secondary", @""));
+		block(self, NSLocalizedString(@"Secondary", @""));
 		return nil;
 	}
 	
@@ -404,14 +596,23 @@
 	}
 	if([self.splitViewController isKindOfClass:LNSplitViewControllerSecondaryPopup.class] && [vcs containsObject:[self.splitViewController viewControllerForColumn:UISplitViewControllerColumnPrimary]])
 	{
-		self.view.backgroundColor = UIColor.secondarySystemBackgroundColor;
-		block(NSLocalizedString(@"Sidebar", @""));
+		self.splitViewController.primaryBackgroundStyle = UISplitViewControllerBackgroundStyleSidebar;
+		self.view.backgroundColor = UIColor.clearColor;
+		block(self, NSLocalizedString(@"Sidebar", @""));
 		
 		return nil;
 	}
 	
 	if([self.splitViewController isKindOfClass:LNSplitViewControllerGlobalPopup.class])
 	{
+		self.splitViewController.primaryBackgroundStyle = UISplitViewControllerBackgroundStyleSidebar;
+		DemoViewController* primary = [self.splitViewController viewControllerForColumn:UISplitViewControllerColumnPrimary];
+		block(primary, NSLocalizedString(@"Sidebar", @""));
+		primary.view.backgroundColor = UIColor.clearColor;
+		
+#if LNPOPUP
+		self.splitViewController.popupBarAvoidsPrimaryColumn = [NSUserDefaults.settingDefaults boolForKey:PopupSettingEnableAvoidPrimaryColumn];
+#endif
 		return self.splitViewController;
 	}
 	
@@ -426,6 +627,15 @@
 			targetVC = self;
 		}
 	}
+
+#if LNPOPUP
+	targetVC.popupOpensOverSplitViewController = [NSUserDefaults.settingDefaults boolForKey:PopupSettingEnableOpenOverSplitView];
+	
+	if(![self.splitViewController isKindOfClass:LNSplitViewControllerSecondaryPopup.class])
+	{
+		targetVC.popupOpensOverSplitViewController = NO;
+	}
+#endif
 	
 	return targetVC;
 }
@@ -465,8 +675,10 @@
 		return;
 	}
 	
-	UIViewController* demoVC;
+	targetVC.popupBar.barStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue];
 	
+	UIViewController* demoVC;
+	BOOL wantsGlassBackground = YES;
 	switch([NSUserDefaults.settingDefaults integerForKey:PopupSettingUseScrollingPopupContent])
 	{
 		case 10:
@@ -490,43 +702,176 @@
 		case 100:
 			demoVC = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingMap"];
 			break;
+			
+		case 200:
+			demoVC = [[UIStoryboard storyboardWithName:@"Settings" bundle:nil] instantiateInitialViewController];
+			demoVC.popupItem.barButtonItems = @[
+				[[UIBarButtonItem alloc] initWithImage:LNSystemImage(@"gear", LNBarIsClassicCompact(targetVC.popupBar) ? LNSystemImageScaleCompact : LNSystemImageScaleNormal) landscapeImagePhone:nil style:UIBarButtonItemStylePlain target:nil action:nil]
+			];
+			LNApplyTitleWithSettings(demoVC);
+			break;
+
+		case -10:
+		{
+			UIViewController* vc = [UIViewController new];
+			UIView* _leadingLayoutView = [UIView new];
+			_leadingLayoutView.frame = CGRectMake(0, 0, 44, 44);
+			vc.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:_leadingLayoutView];
+#if defined(__IPHONE_27_1)
+			if(@available(iOS 27.1, *))
+			{
+				vc.navigationItem.leftBarButtonItem.axisBehavior = UIBarButtonItemAxisBehaviorVerticalPreferred;
+			}
+#endif
+			
+			UIView* _trailingLayoutView = [UIView new];
+			_trailingLayoutView.frame = CGRectMake(0, 0, 44, 44);
+			vc.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:_trailingLayoutView];
+#if defined(__IPHONE_27_1)
+			if(@available(iOS 27.1, *))
+			{
+				vc.navigationItem.rightBarButtonItem.axisBehavior = UIBarButtonItemAxisBehaviorVerticalPreferred;
+			}
+#endif
+			
+			demoVC = [[UINavigationController alloc] initWithRootViewController:vc];
+			break;
+		}
+		case -11:
+		{
+			if(@available(iOS 18.0, *))
+			{
+				UITabBarController* tab = [[UITabBarController alloc] initWithTabs:@[
+					[[UITab alloc] initWithTitle:@"1" image:[UIImage systemImageNamed:@"1.circle.fill"] identifier:@"1" viewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
+					return [[UINavigationController alloc] initWithRootViewController:[UIViewController new]];
+				}],
+					[[UITab alloc] initWithTitle:@"2" image:[UIImage systemImageNamed:@"2.circle.fill"] identifier:@"2" viewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
+					return [UIViewController new];
+				}],
+					[[UITab alloc] initWithTitle:@"3" image:[UIImage systemImageNamed:@"3.circle.fill"] identifier:@"3" viewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
+					return [UIViewController new];
+				}],
+				]];
+				tab.view.backgroundColor = UIColor.clearColor;
+				
+				demoVC = tab;
+			}
+			else
+			{
+				demoVC = [DemoPopupContentViewController new];
+			}
+			break;
+		}
+			
 		default:
 			demoVC = [DemoPopupContentViewController new];
 			break;
 	}
 	
+#if defined(__IPHONE_27_1)
+	if(@available(iOS 27.1, *))
+	{
+		if([NSUserDefaults.settingDefaults boolForKey:PopupSettingDuoEmbedContentInArrangementView])
+		{
+			UIOverlayArrangement* overlayArrangement = UIOverlayArrangement.overlayArrangement;
+			overlayArrangement.axes = UIAxisHorizontal;
+			
+			UIOverlayArrangementViewProperties* props = [UIOverlayArrangementViewProperties new];
+			props.edge = NSDirectionalRectEdgeLeading;
+			[overlayArrangement setViewProperties:props forPlacement:UIArrangementViewControllerViewPlacementPrimary];
+			
+			UIArrangementViewController* ar = [PopupArrangementViewController new];
+			[ar updateArrangement:overlayArrangement];
+			
+			[ar setViewController:demoVC forPlacement:UIArrangementViewControllerViewPlacementPrimary];
+			
+			
+			UIViewController* another = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingMap"];
+			
+//			UIViewController* another = [self.storyboard instantiateViewControllerWithIdentifier:@"VerticalGroupedPagedScrollingColors"];
+
+//			ScrollingColorsViewController* another = [self.storyboard instantiateViewControllerWithIdentifier:@"ScrollingColors"];
+//			another.isVertical = YES;
+			
+			[ar setViewController:another forPlacement:UIArrangementViewControllerViewPlacementSecondary];
+			
+			demoVC = ar;
+		}
+	}
+#endif
+	
+	self.tabBarController.adjustsTabBarLayoutForPopupBar = [NSUserDefaults.settingDefaults boolForKey:PopupSettingAdjustsTabBarLayout];
+	
+	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingInvertDemoSceneColors])
+	{
+		demoVC.overrideUserInterfaceStyle = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+	}
+	else
+	{
+		demoVC.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+	}
+	
+	if(@available(iOS 26.0, *))
+	{
+		if(wantsGlassBackground)
+		{
+			targetVC.popupContentView.backgroundEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+		}
+	}
+	
 	LNPopupCloseButtonStyle closeButtonStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingCloseButtonStyle] unsignedIntegerValue];
+	if(LNPopupSettingsHasOS26Glass() && closeButtonStyle == LNPopupCloseButtonStyleDefault)
+	{
+		closeButtonStyle = LNPopupCloseButtonStyleShinyGlass;
+	}
+	
+	LNPopupCloseButtonPositioning closeButtonPositioning = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingCloseButtonPositioning] unsignedIntegerValue];
 	
 	targetVC.popupContentView.popupCloseButton.accessibilityLabel = NSLocalizedString(@"Custom popup button accessibility label", @"");
 	targetVC.popupContentView.popupCloseButton.accessibilityHint = NSLocalizedString(@"Custom popup button accessibility hint", @"");
 	
 	targetVC.popupBar.progressViewStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingProgressViewStyle] unsignedIntegerValue];
-	targetVC.popupBar.barStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingBarStyle] unsignedIntegerValue];
 	
 	targetVC.popupInteractionStyle = [[NSUserDefaults.settingDefaults objectForKey:PopupSettingInteractionStyle] unsignedIntegerValue];
 
-	if(targetVC.effectivePopupInteractionStyle == LNPopupInteractionStyleScroll && [NSUserDefaults.settingDefaults integerForKey:PopupSettingUseScrollingPopupContent] == 0)
+	if(targetVC.effectivePopupInteractionStyle == LNPopupInteractionStyleScroll && [NSUserDefaults.settingDefaults integerForKey:PopupSettingUseScrollingPopupContent] <= 0)
 	{
-		targetVC.popupInteractionStyle = LNPopupInteractionStyleSnap;
+		targetVC.popupInteractionStyle = LNPopupInteractionStyleAutomatic;
 	}
 
 	targetVC.popupContentView.popupCloseButtonStyle = closeButtonStyle;
+	targetVC.popupContentView.popupCloseButtonPositioning = closeButtonPositioning;
+	[self updatePopupCloseButtonTintColor];
 	
 	targetVC.allowPopupHapticFeedbackGeneration = [NSUserDefaults.settingDefaults boolForKey:PopupSettingHapticFeedbackEnabled];
 	
 	targetVC.popupBar.limitFloatingContentWidth = [NSUserDefaults.settingDefaults boolForKey:PopupSettingLimitFloatingWidth];
-	
+	targetVC.popupBar.inheritsBottomBarMetrics = [NSUserDefaults.settingDefaults boolForKey:PopupSettingMinimizationEnabled];
+
 	NSNumber* effectOverride = [NSUserDefaults.settingDefaults objectForKey:PopupSettingVisualEffectViewBlurEffect];
-	if(effectOverride != nil && effectOverride.unsignedIntValue != 0xffff)
+	if(effectOverride != nil && effectOverride.integerValue != 0xffff && (effectOverride.integerValue >= 0 || LNPopupSettingsHasOS26Glass()))
 	{
-		if(targetVC.popupBar.effectiveBarStyle == LNPopupBarStyleFloating)
+		if(@available(iOS 26.0, *))
+		if(effectOverride.integerValue < 0 && LNPopupSettingsHasOS26Glass())
 		{
-			targetVC.popupBar.standardAppearance.floatingBackgroundEffect = [UIBlurEffect effectWithStyle:effectOverride.unsignedIntegerValue];
+			NSInteger glassStyle = labs(effectOverride.integerValue) - 1;
+			UIGlassEffect* glassEffect = [UIGlassEffect effectWithStyle:glassStyle];
+			glassEffect.interactive = YES;
+			//Always floating
+			targetVC.popupBar.standardAppearance.floatingBackgroundEffect = glassEffect;
 		}
-		else
+		
+		if(effectOverride.integerValue >= 0)
 		{
-			targetVC.popupBar.inheritsAppearanceFromDockingView = NO;
-			targetVC.popupBar.standardAppearance.backgroundEffect = [UIBlurEffect effectWithStyle:effectOverride.unsignedIntegerValue];
+			if(targetVC.popupBar.effectiveBarStyle == LNPopupBarStyleFloating || targetVC.popupBar.effectiveBarStyle == LNPopupBarStyleFloatingCompact)
+			{
+				targetVC.popupBar.standardAppearance.floatingBackgroundEffect = [UIBlurEffect effectWithStyle:effectOverride.integerValue];
+			}
+			else
+			{
+				targetVC.popupBar.inheritsAppearanceFromDockingView = NO;
+				targetVC.popupBar.standardAppearance.backgroundEffect = [UIBlurEffect effectWithStyle:effectOverride.integerValue];
+			}
 		}
 	}
 	
@@ -542,9 +887,11 @@
 		appearance.subtitleTextAttributes = @{NSParagraphStyleAttributeName: paragraphStyle, NSFontAttributeName: [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:[UIFont fontWithName:@"Chalkduster" size:12]], NSForegroundColorAttributeName: UIColor.greenColor};
 		
 		appearance.floatingBarBackgroundShadow.shadowColor = UIColor.redColor;
+		appearance.floatingBarBackgroundShadow.shadowOffset = CGSizeZero;
+		
 		appearance.imageShadow.shadowColor = UIColor.yellowColor;
 		
-		if(targetVC.popupBar.barStyle == LNPopupBarStyleFloating || (targetVC.popupBar.barStyle == LNPopupBarStyleDefault && NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 17))
+		if(targetVC.popupBar.barStyle == LNPopupBarStyleFloating || targetVC.popupBar.barStyle == LNPopupBarStyleFloatingCompact || (targetVC.popupBar.barStyle == LNPopupBarStyleDefault && NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 17))
 		{
 			appearance.floatingBackgroundEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
 		}
@@ -557,6 +904,20 @@
 		
 		targetVC.popupBar.tintColor = UIColor.yellowColor;
 		targetVC.popupBar.standardAppearance = appearance;
+	}
+	
+	if([NSUserDefaults.settingDefaults boolForKey:PopupSettingShineEnabled])
+	{
+		if(@available(iOS 27.0, *))
+		{
+			UIGlassEffect* glass = UIGlassEffect.shinyGlass;
+			glass.interactive = YES;
+			targetVC.popupBar.standardAppearance.floatingBackgroundEffect = glass;
+		}
+		else
+		{
+			targetVC.popupBar.standardAppearance.floatingBarShineEnabled = YES;
+		}
 	}
 	
 	targetVC.popupBar.standardAppearance.marqueeScrollEnabled = [NSUserDefaults.settingDefaults boolForKey:PopupSettingMarqueeEnabled];
@@ -573,12 +934,25 @@
 	{
 		targetVC.shouldExtendPopupBarUnderSafeArea = NO;
 		targetVC.popupBar.inheritsAppearanceFromDockingView = NO;
-		targetVC.popupBar.customBarViewController = [ManualLayoutCustomBarViewController new];
+		targetVC.popupBar.customBarViewController = [[ManualLayoutCustomBarViewController alloc] initWithCustomCornerConfiguration:NO];
 		[targetVC.popupBar.standardAppearance configureWithTransparentBackground];
 	}
 	
 	targetVC.popupPresentationDelegate = self;
 	[targetVC presentPopupBarWithContentViewController:demoVC animated:animated completion:nil];
+#else
+	if(@available(iOS 26.0, *))
+	{
+		if(self.tabBarController.bottomAccessory != nil)
+		{
+			return;
+		}
+		
+		UIView* view = [LNTabBarAccessoryView new];
+		view.backgroundColor = UIColor.clearColor;
+		UITabAccessory* accessory = [[UITabAccessory alloc] initWithContentView:view];
+		[self.tabBarController setBottomAccessory:accessory animated:YES];
+	}
 #endif
 }
 
@@ -587,12 +961,45 @@
 #if LNPOPUP
 	__kindof UIViewController* targetVC = [self _targetVCForPopup];
 	[targetVC dismissPopupBarAnimated:YES completion:nil];
+#else
+	if(@available(iOS 26.0, *))
+	{
+		if(self.tabBarController.bottomAccessory == nil)
+		{
+			return;
+		}
+		
+		[self.tabBarController setBottomAccessory:nil animated:YES];
+	}
 #endif
+}
+
+- (BOOL)isInSearchTab
+{
+	BOOL rv = NO;
+	
+	if(@available(iOS 18.0, *))
+	{
+		if([self.tab isKindOfClass:UISearchTab.class])
+		{
+			rv = YES;
+		}
+	}
+	
+	return rv;
 }
 
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
-	segue.destinationViewController.hidesBottomBarWhenPushed =
+	BOOL shouldHideBottom = YES;
+#if defined(__IPHONE_27_1)
+	if(@available(iOS 27.1, *))
+	{
+		shouldHideBottom = self.traitCollection.verticalBarEdge == UIVerticalBarEdgeUnspecified;
+	}
+#endif
+	
+	segue.destinationViewController.hidesBottomBarWhenPushed = shouldHideBottom && self.isInSearchTab == NO &&
 #if LNPOPUP
 	[NSUserDefaults.settingDefaults boolForKey:PopupSettingHidesBottomBarWhenPushed];
 #else
@@ -611,9 +1018,7 @@
 	{
 		if(@available(iOS 18.0, *))
 		{
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 180000
 			[self.tabBarController setTabBarHidden:!self.tabBarController.isTabBarHidden animated:YES];
-#endif
 		}
 	}
 	else if(self.navigationController != nil)

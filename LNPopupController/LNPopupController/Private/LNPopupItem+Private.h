@@ -7,7 +7,7 @@
 //
 
 #import <LNPopupController/LNPopupItem.h>
-#import "LNPopupController.h"
+#import "LNPopupControllerImpl.h"
 
 extern NSArray* __LNPopupItemObservedKeys;
 
@@ -24,6 +24,7 @@ extern NSArray* __LNPopupItemObservedKeys;
 @property (nonatomic, strong) UIViewController* swiftuiImageController;
 
 @property (nonatomic, strong) UIView* swiftuiTitleContentView;
+@property (nonatomic, strong) UIViewController* swiftuiTitleContentViewController;
 
 @property (nonatomic, strong) UIViewController* swiftuiHiddenLeadingController;
 @property (nonatomic, strong) UIViewController* swiftuiHiddenTrailingController;

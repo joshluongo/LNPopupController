@@ -7,6 +7,11 @@
 //
 
 #import "LNPopupControllerExampleSupport.h"
+#if LNPOPUP
+#import "LNPopupControllerExample-Swift.h"
+#else
+#import "LNPopupControllerExampleNoPopup-Swift.h"
+#endif
 #import "SettingKeys.h"
 
 @interface DemoGalleryControllerTableView : UITableView @end
@@ -44,8 +49,6 @@
 
 @end
 
-@interface DemoTabBarController : UITabBarController @end
-
 @implementation DemoTabBarController
 {
 	NSMutableArray<UITab*>* _tabs API_AVAILABLE(ios(18.0));
@@ -71,26 +74,49 @@
 {
 	if(@available(iOS 18.0, *))
 	{
+		if(_tabs.count > 0)
+		{
+			return;
+		}
+		
 		_tabs = [NSMutableArray new];
 		
 		NSUInteger idx = 0;
 		for(UIViewController* vc in self.viewControllers)
 		{
+			BOOL isRegularTab = idx != 3 || [self isKindOfClass:LNCustomContainerController.class] || [vc isKindOfClass:UINavigationController.class] == NO || NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 26;
+			
 			NSString* title = vc.tabBarItem.title;
-			if(UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad)
+			if(isRegularTab)
 			{
 				title = [NSString stringWithFormat:@"%@ %@", title, @(idx + 1)];
 			}
 			
-			UITab* tab = [[UITab alloc] initWithTitle:title image:[UIImage systemImageNamed:[NSString stringWithFormat:@"%@.square", @(idx + 1)]] identifier:[NSString stringWithFormat:@"%@_%@", vc.tabBarItem.title, @(idx)] viewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
-				return vc;
-			}];
+			UITab* tab;
+			
+			if(isRegularTab)
+			{
+				UIImage* image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%@.square", @(idx + 1)]];
+				
+				tab = [[UITab alloc] initWithTitle:title image:image identifier:[NSString stringWithFormat:@"%@_%@", vc.tabBarItem.title, @(idx)] viewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
+					return vc;
+				}];
+			}
+			else
+			{
+				UISearchTab* searchTab = [[UISearchTab alloc] initWithViewControllerProvider:^UIViewController * _Nonnull(__kindof UITab * _Nonnull tab) {
+					return vc;
+				}];
+				
+				tab = searchTab;
+			}
+			
 			[_tabs addObject:tab];
 			idx++;
 		}
 		
 		_sidebarTabs = [NSMutableArray new];
-		if([NSUserDefaults.settingDefaults boolForKey:PopupSettingTabBarHasSidebar])
+		if([self isKindOfClass:LNCustomContainerController.class] == NO && [NSUserDefaults.settingDefaults boolForKey:PopupSettingTabBarHasSidebar])
 		{
 			if(UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad)
 			{
@@ -148,7 +174,7 @@
 
 - (void)updateTabsForTraitCollection:(UITraitCollection*)collection API_AVAILABLE(ios(18.0))
 {
-	if(collection.userInterfaceIdiom == UIUserInterfaceIdiomPad && collection.horizontalSizeClass == UIUserInterfaceSizeClassRegular && _sidebarTabs.count > 0 && self.splitViewController == nil)
+	if([self isKindOfClass:LNCustomContainerController.class] == NO && collection.userInterfaceIdiom == UIUserInterfaceIdiomPad && collection.horizontalSizeClass == UIUserInterfaceSizeClassRegular && _sidebarTabs.count > 0 && self.splitViewController == nil)
 	{
 		self.tabs = [_tabs arrayByAddingObjectsFromArray:_sidebarTabs];
 		self.compactTabIdentifiers = [_tabs valueForKey:@"identifier"];
@@ -163,6 +189,16 @@
 		self.tabs = _tabs;
 		self.mode = UITabBarControllerModeTabBar;
 	}
+	
+#if defined(__IPHONE_27_0)
+	if(@available(iOS 27.0, *))
+	{
+		if([NSUserDefaults.settingDefaults boolForKey:PopupSettingEnableProminentSearchTab])
+		{
+			self.prominentTabIdentifier = @"com.apple.UIKit.Search";
+		}
+	}
+#endif
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -187,12 +223,26 @@
 
 @end
 
+//@interface UITabBar ()
+//
+//@property (readonly, nonatomic) struct CGRect _frameForHostedAccessoryView;
+//
+//@end
+
 @interface DemoTabBar : UITabBar @end
 @implementation DemoTabBar
+//{
+//	UIView* _zaza;
+//}
 
 - (void)willMoveToSuperview:(UIView *)newSuperview
 {
 	[super willMoveToSuperview:newSuperview];
+}
+
+- (void)setTransform:(CGAffineTransform)transform
+{
+	[super setTransform:transform];
 }
 
 - (void)setFrame:(CGRect)frame
@@ -200,6 +250,23 @@
 //	NSLog(@"🤦‍♂️ frame: %@ safe area: %@", @(frame), [self valueForKey:@"safeAreaInsets"]);
 	
 	[super setFrame:frame];
+}
+
+- (void)layoutSubviews
+{
+	[super layoutSubviews];
+	
+//	self.backgroundColor = [UIColor.yellowColor colorWithAlphaComponent:0.2];
+//	
+//	if(_zaza == nil)
+//	{
+//		_zaza = [UIView new];
+//		_zaza.backgroundColor = [UIColor.redColor colorWithAlphaComponent:0.2];
+//		[self addSubview:_zaza];
+//	}
+//	
+//	[self bringSubviewToFront:_zaza];
+//	_zaza.frame = [self _frameForHostedAccessoryView];
 }
 
 @end

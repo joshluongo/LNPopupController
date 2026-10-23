@@ -3,16 +3,20 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		3901289526CFC1D60002612D /* LNPopupControllerExampleSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = 3901289426CFC1D60002612D /* LNPopupControllerExampleSupport.m */; };
+		39201CA93071B67900E84F51 /* PopupArrangementViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39201CA83071B67900E84F51 /* PopupArrangementViewController.swift */; };
+		39201CAA3071B67900E84F51 /* PopupArrangementViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39201CA83071B67900E84F51 /* PopupArrangementViewController.swift */; };
 		39277A091B58228000293F95 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 39277A081B58228000293F95 /* main.m */; };
 		39277A0C1B58228000293F95 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 39277A0B1B58228000293F95 /* AppDelegate.m */; };
 		39277A151B58228000293F95 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39277A131B58228000293F95 /* Main.storyboard */; };
 		39277A171B58228000293F95 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39277A161B58228000293F95 /* Assets.xcassets */; };
 		392E2AC52AD5CAB600944CB2 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 392E2AC42AD5CAB600944CB2 /* LaunchScreen.storyboard */; };
+		393C9BD0302D03FB00156261 /* PlayerViewMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393C9BCF302D03FB00156261 /* PlayerViewMac.swift */; };
+		393C9BD1302D03FB00156261 /* PlayerViewMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393C9BCF302D03FB00156261 /* PlayerViewMac.swift */; };
 		393F23251E16C04A000E969D /* MapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393F23241E16C04A000E969D /* MapViewController.swift */; };
 		393F23271E16C192000E969D /* CustomMapBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393F23261E16C192000E969D /* CustomMapBarViewController.swift */; };
 		393F23291E16CF90000E969D /* LocationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393F23281E16CF90000E969D /* LocationsController.swift */; };
@@ -26,13 +30,18 @@
 		3980E7FC26DEBCAF00AC0728 /* LoremIpsum in Frameworks */ = {isa = PBXBuildFile; productRef = 3980E7FB26DEBCAF00AC0728 /* LoremIpsum */; };
 		39837A201B756F1A004D2DA9 /* RandomColors.m in Sources */ = {isa = PBXBuildFile; fileRef = 39837A1F1B756F1A004D2DA9 /* RandomColors.m */; };
 		39837A241B758541004D2DA9 /* DemoMusicPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A231B758541004D2DA9 /* DemoMusicPlayerController.swift */; };
-		39837A261B759721004D2DA9 /* PortraitTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A251B759721004D2DA9 /* PortraitTabBarController.swift */; };
+		39837A261B759721004D2DA9 /* MusicTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A251B759721004D2DA9 /* MusicTabBarController.swift */; };
 		3985DE602549539B00CD76EE /* IntroWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3985DE5F2549539B00CD76EE /* IntroWebViewController.m */; };
+		3987A4C22E86E42D0090E273 /* DemoMusicSearchController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3987A4C12E86E42D0090E273 /* DemoMusicSearchController.swift */; };
+		3987A4C32E86E42D0090E273 /* DemoMusicSearchController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3987A4C12E86E42D0090E273 /* DemoMusicSearchController.swift */; };
 		3988E3581B59C3000039C09B /* DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3988E3571B59C3000039C09B /* DemoViewController.m */; };
 		399748721D5652250079492B /* DemoPopupContentViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 399748711D5652250079492B /* DemoPopupContentViewController.m */; };
 		39988C762AA1557F00C3BB04 /* SafeSystemImages.m in Sources */ = {isa = PBXBuildFile; fileRef = 39988C752AA1557F00C3BB04 /* SafeSystemImages.m */; };
 		39988C772AA1557F00C3BB04 /* SafeSystemImages.m in Sources */ = {isa = PBXBuildFile; fileRef = 39988C752AA1557F00C3BB04 /* SafeSystemImages.m */; };
 		39A3B58B230D400B00E10425 /* LNSplitViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 39A3B58A230D400B00E10425 /* LNSplitViewController.m */; };
+		39A8BE90300B4358001B1E10 /* LNPopupController.icon in Resources */ = {isa = PBXBuildFile; fileRef = 39A8BE8F300B4358001B1E10 /* LNPopupController.icon */; };
+		39A8BE91300B4358001B1E10 /* LNPopupController.icon in Resources */ = {isa = PBXBuildFile; fileRef = 39A8BE8F300B4358001B1E10 /* LNPopupController.icon */; };
+		39A8CA2730845BA9008EC6F6 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 39A8CA2630845BA9008EC6F6 /* SwiftUIIntrospect */; };
 		39B0DFE62B1819A9008CCF36 /* MapScene.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39B0DFE92B1819A9008CCF36 /* MapScene.storyboard */; };
 		39B0DFE72B1819A9008CCF36 /* MapScene.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39B0DFE92B1819A9008CCF36 /* MapScene.storyboard */; };
 		39B0DFEA2B1819BC008CCF36 /* Settings.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39B0DFED2B1819BC008CCF36 /* Settings.storyboard */; };
@@ -49,22 +58,28 @@
 		39B645F12CA61B0200AB038B /* ScrollingMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B645EF2CA61B0200AB038B /* ScrollingMapViewController.swift */; };
 		39BBA86924FEC32F00D9712A /* ManualLayoutCustomBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39BBA86824FEC32F00D9712A /* ManualLayoutCustomBarViewController.swift */; };
 		39BBA86C24FEC3E800D9712A /* ManualLayoutCustomBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39BBA86824FEC32F00D9712A /* ManualLayoutCustomBarViewController.swift */; };
-		39BF83D32B554AE800917649 /* LNPreviewToContextMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 39BF83D22B554AE800917649 /* LNPreviewToContextMenu */; };
-		39BF83D42B554AE800917649 /* LNPreviewToContextMenu in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 39BF83D22B554AE800917649 /* LNPreviewToContextMenu */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		39BF83D32B554AE800917649 /* LNPreviewToContextMenu in Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = 39BF83D22B554AE800917649 /* LNPreviewToContextMenu */; };
+		39BF83D42B554AE800917649 /* LNPreviewToContextMenu in Embed Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = 39BF83D22B554AE800917649 /* LNPreviewToContextMenu */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		39BF83D62B554AF400917649 /* LNPreviewToContextMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 39BF83D52B554AF400917649 /* LNPreviewToContextMenu */; };
 		39BF83D72B554AF400917649 /* LNPreviewToContextMenu in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 39BF83D52B554AF400917649 /* LNPreviewToContextMenu */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		39C3E086300AA36E00D2288A /* LNPopupController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DB52F51B5823490061C589 /* LNPopupController.framework */; };
+		39C3E087300AA36E00D2288A /* LNPopupController.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 39DB52F51B5823490061C589 /* LNPopupController.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		39C4026E2CA4ED9F00F1C743 /* ScrollingColorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C4026D2CA4ED9F00F1C743 /* ScrollingColorsViewController.swift */; };
 		39D6C8B32B2D01E600F53E70 /* LNTouchVisualizer in Frameworks */ = {isa = PBXBuildFile; productRef = 39D6C8B22B2D01E600F53E70 /* LNTouchVisualizer */; };
-		39D6C8B42B2D01F600F53E70 /* LNTouchVisualizer in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 39D6C8B22B2D01E600F53E70 /* LNTouchVisualizer */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		39D6C8B42B2D01F600F53E70 /* LNTouchVisualizer in Embed Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = 39D6C8B22B2D01E600F53E70 /* LNTouchVisualizer */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		39D6C8B62B2D020000F53E70 /* LNTouchVisualizer in Frameworks */ = {isa = PBXBuildFile; productRef = 39D6C8B52B2D020000F53E70 /* LNTouchVisualizer */; };
 		39D6C8B72B2D020000F53E70 /* LNTouchVisualizer in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 39D6C8B52B2D020000F53E70 /* LNTouchVisualizer */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		39D6C8BB2B2D02B500F53E70 /* SettingKeys.m in Sources */ = {isa = PBXBuildFile; fileRef = 39D6C8B92B2D02B500F53E70 /* SettingKeys.m */; };
 		39D6C8BC2B2D02B500F53E70 /* SettingKeys.m in Sources */ = {isa = PBXBuildFile; fileRef = 39D6C8B92B2D02B500F53E70 /* SettingKeys.m */; };
 		39D6C8BD2B2D02B500F53E70 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D6C8BA2B2D02B500F53E70 /* SettingsViewController.swift */; };
 		39D6C8BE2B2D02B500F53E70 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D6C8BA2B2D02B500F53E70 /* SettingsViewController.swift */; };
-		39DB61801B8891ED001BFF8F /* LNPopupController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DB52F51B5823490061C589 /* LNPopupController.framework */; };
-		39DB61811B8891ED001BFF8F /* LNPopupController.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 39DB52F51B5823490061C589 /* LNPopupController.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		39DDA0AE230D5F63007DCCD8 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DDA0AD230D5F63007DCCD8 /* MapKit.framework */; };
+		39F031B02E8FC0DD0079F2FD /* CustomContainer.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39F031AF2E8FC0DD0079F2FD /* CustomContainer.storyboard */; };
+		39F031B12E8FC0DD0079F2FD /* CustomContainer.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 39F031AF2E8FC0DD0079F2FD /* CustomContainer.storyboard */; };
+		39F031B32E8FC2770079F2FD /* CustomContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F031B22E8FC2770079F2FD /* CustomContainerController.swift */; };
+		39F031B42E8FC2770079F2FD /* CustomContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F031B22E8FC2770079F2FD /* CustomContainerController.swift */; };
+		39F5ACD52EA583F8002EF1E6 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F5ACD42EA583F2002EF1E6 /* PlayerView.swift */; };
+		39F5ACD62EA583F8002EF1E6 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F5ACD42EA583F2002EF1E6 /* PlayerView.swift */; };
 		39FAFC3724E71A6C008BBC2D /* DemoAlbumTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397C56271B7538A5007A67F0 /* DemoAlbumTableViewController.swift */; };
 		39FAFC3824E71A6C008BBC2D /* DemoMusicPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A231B758541004D2DA9 /* DemoMusicPlayerController.swift */; };
 		39FAFC3924E71A6C008BBC2D /* CustomMapBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393F23261E16C192000E969D /* CustomMapBarViewController.swift */; };
@@ -76,7 +91,7 @@
 		39FAFC4124E71A6C008BBC2D /* MapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393F23241E16C04A000E969D /* MapViewController.swift */; };
 		39FAFC4224E71A6C008BBC2D /* DemoPopupContentViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 399748711D5652250079492B /* DemoPopupContentViewController.m */; };
 		39FAFC4324E71A6C008BBC2D /* DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3988E3571B59C3000039C09B /* DemoViewController.m */; };
-		39FAFC4424E71A6C008BBC2D /* PortraitTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A251B759721004D2DA9 /* PortraitTabBarController.swift */; };
+		39FAFC4424E71A6C008BBC2D /* MusicTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39837A251B759721004D2DA9 /* MusicTabBarController.swift */; };
 		39FAFC4524E71A6C008BBC2D /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 39631FAC230DA03E0059D119 /* SceneDelegate.m */; };
 		39FAFC4624E71A6C008BBC2D /* MusicCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397C56291B753A45007A67F0 /* MusicCell.swift */; };
 		39FAFC4824E71A6C008BBC2D /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39DDA0AD230D5F63007DCCD8 /* MapKit.framework */; };
@@ -86,18 +101,18 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		39C3E088300AA37C00D2288A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 39DB52F01B5823480061C589 /* LNPopupController.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 39DB52E41B5823330061C589;
+			remoteInfo = LNPopupController;
+		};
 		39DB52F41B5823490061C589 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 39DB52F01B5823480061C589 /* LNPopupController.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = 39DB52E51B5823330061C589;
-			remoteInfo = LNPopupController;
-		};
-		39DB61821B8891EE001BFF8F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 39DB52F01B5823480061C589 /* LNPopupController.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 39DB52E41B5823330061C589;
 			remoteInfo = LNPopupController;
 		};
 /* End PBXContainerItemProxy section */
@@ -111,7 +126,7 @@
 			files = (
 				39D6C8B42B2D01F600F53E70 /* LNTouchVisualizer in Embed Frameworks */,
 				39BF83D42B554AE800917649 /* LNPreviewToContextMenu in Embed Frameworks */,
-				39DB61811B8891ED001BFF8F /* LNPopupController.framework in Embed Frameworks */,
+				39C3E087300AA36E00D2288A /* LNPopupController.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -133,6 +148,7 @@
 /* Begin PBXFileReference section */
 		3901289326CFC1D60002612D /* LNPopupControllerExampleSupport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LNPopupControllerExampleSupport.h; sourceTree = "<group>"; };
 		3901289426CFC1D60002612D /* LNPopupControllerExampleSupport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LNPopupControllerExampleSupport.m; sourceTree = "<group>"; };
+		39201CA83071B67900E84F51 /* PopupArrangementViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupArrangementViewController.swift; sourceTree = "<group>"; };
 		39277A041B58228000293F95 /* LNPopupControllerExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LNPopupControllerExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39277A081B58228000293F95 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		39277A0A1B58228000293F95 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -142,6 +158,7 @@
 		39277A161B58228000293F95 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		39277A1B1B58228000293F95 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = ../Info.plist; sourceTree = "<group>"; };
 		392E2AC42AD5CAB600944CB2 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		393C9BCF302D03FB00156261 /* PlayerViewMac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViewMac.swift; sourceTree = "<group>"; };
 		393F23241E16C04A000E969D /* MapViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MapViewController.swift; sourceTree = "<group>"; };
 		393F23261E16C192000E969D /* CustomMapBarViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomMapBarViewController.swift; sourceTree = "<group>"; };
 		393F23281E16CF90000E969D /* LocationsController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationsController.swift; sourceTree = "<group>"; };
@@ -156,9 +173,10 @@
 		39837A1F1B756F1A004D2DA9 /* RandomColors.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RandomColors.m; sourceTree = "<group>"; };
 		39837A211B756F4C004D2DA9 /* RandomColors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RandomColors.h; sourceTree = "<group>"; };
 		39837A231B758541004D2DA9 /* DemoMusicPlayerController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoMusicPlayerController.swift; sourceTree = "<group>"; };
-		39837A251B759721004D2DA9 /* PortraitTabBarController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortraitTabBarController.swift; sourceTree = "<group>"; };
+		39837A251B759721004D2DA9 /* MusicTabBarController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MusicTabBarController.swift; sourceTree = "<group>"; };
 		3985DE5E2549539B00CD76EE /* IntroWebViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IntroWebViewController.h; sourceTree = "<group>"; };
 		3985DE5F2549539B00CD76EE /* IntroWebViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = IntroWebViewController.m; sourceTree = "<group>"; };
+		3987A4C12E86E42D0090E273 /* DemoMusicSearchController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMusicSearchController.swift; sourceTree = "<group>"; };
 		3988E3571B59C3000039C09B /* DemoViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoViewController.m; sourceTree = "<group>"; tabWidth = 4; };
 		399748701D5652250079492B /* DemoPopupContentViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoPopupContentViewController.h; sourceTree = "<group>"; };
 		399748711D5652250079492B /* DemoPopupContentViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoPopupContentViewController.m; sourceTree = "<group>"; };
@@ -167,6 +185,7 @@
 		39A134DA1B73FFC0003AB4C5 /* LNPopupControllerExample-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "LNPopupControllerExample-Bridging-Header.h"; sourceTree = "<group>"; };
 		39A3B589230D400B00E10425 /* LNSplitViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LNSplitViewController.h; sourceTree = "<group>"; };
 		39A3B58A230D400B00E10425 /* LNSplitViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LNSplitViewController.m; sourceTree = "<group>"; };
+		39A8BE8F300B4358001B1E10 /* LNPopupController.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = LNPopupController.icon; sourceTree = "<group>"; };
 		39B0DFE82B1819A9008CCF36 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MapScene.storyboard; sourceTree = "<group>"; };
 		39B0DFEC2B1819BC008CCF36 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Settings.storyboard; sourceTree = "<group>"; };
 		39B0DFF02B1819C2008CCF36 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/ManualLayoutScene.storyboard; sourceTree = "<group>"; };
@@ -182,9 +201,16 @@
 		39D6C8BA2B2D02B500F53E70 /* SettingsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SettingsViewController.swift; path = ../../../LNPopupSettings/SettingsViewController.swift; sourceTree = "<group>"; };
 		39DB52F01B5823480061C589 /* LNPopupController.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = LNPopupController.xcodeproj; path = ../LNPopupController/LNPopupController.xcodeproj; sourceTree = "<group>"; };
 		39DDA0AD230D5F63007DCCD8 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
+		39F031AF2E8FC0DD0079F2FD /* CustomContainer.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CustomContainer.storyboard; sourceTree = "<group>"; };
+		39F031B22E8FC2770079F2FD /* CustomContainerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomContainerController.swift; sourceTree = "<group>"; };
+		39F5ACD42EA583F2002EF1E6 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		39FAFC5724E71A6C008BBC2D /* LNPopupControllerExampleNoPopup.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LNPopupControllerExampleNoPopup.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39FAFC5824E71A6C008BBC2D /* LNPopupControllerExampleNoPopup-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "LNPopupControllerExampleNoPopup-Info.plist"; path = "../LNPopupControllerExampleNoPopup-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		39C3E184300AB2F700D2288A /* Catalyst */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Catalyst; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		39277A011B58228000293F95 /* Frameworks */ = {
@@ -192,9 +218,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				39BF83D32B554AE800917649 /* LNPreviewToContextMenu in Frameworks */,
+				39C3E086300AA36E00D2288A /* LNPopupController.framework in Frameworks */,
 				3980E7FC26DEBCAF00AC0728 /* LoremIpsum in Frameworks */,
+				39A8CA2730845BA9008EC6F6 /* SwiftUIIntrospect in Frameworks */,
 				39DDA0AE230D5F63007DCCD8 /* MapKit.framework in Frameworks */,
-				39DB61801B8891ED001BFF8F /* LNPopupController.framework in Frameworks */,
 				39D6C8B32B2D01E600F53E70 /* LNTouchVisualizer in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -229,6 +256,7 @@
 			children = (
 				39DB52F01B5823480061C589 /* LNPopupController.xcodeproj */,
 				39277A061B58228000293F95 /* LNPopupControllerExample */,
+				39A8BE8F300B4358001B1E10 /* LNPopupController.icon */,
 				39277A051B58228000293F95 /* Products */,
 				39DDA0AC230D5F63007DCCD8 /* Frameworks */,
 			);
@@ -253,6 +281,8 @@
 				397C560C1B74D747007A67F0 /* Demo - Music Scene (Swift) */,
 				393F23211E16BEF5000E969D /* Demo - Custom Pupup Bar Scene (Swift) */,
 				39BBA86324FEC16600D9712A /* Demo - Custom Pupup Bar Scene - Manual Layout (Swift) */,
+				39F031AE2E8FC0420079F2FD /* Demo - Custom Container */,
+				39C3E184300AB2F700D2288A /* Catalyst */,
 				3908C3491E7C9E8A00451B5D /* Settings */,
 				39837A221B756F9B004D2DA9 /* Utils */,
 				39277A071B58228000293F95 /* Supporting Files */,
@@ -319,6 +349,7 @@
 				39B645EC2CA5AA1300AB038B /* PageCardViewController.swift */,
 				39B645E92CA5A97B00AB038B /* ScrollingColorsPageViewController.swift */,
 				39B645EF2CA61B0200AB038B /* ScrollingMapViewController.swift */,
+				39201CA83071B67900E84F51 /* PopupArrangementViewController.swift */,
 			);
 			name = "Demo - Testing Scene (Objective-C)";
 			path = TestingScene;
@@ -327,11 +358,14 @@
 		397C560C1B74D747007A67F0 /* Demo - Music Scene (Swift) */ = {
 			isa = PBXGroup;
 			children = (
+				39F5ACD42EA583F2002EF1E6 /* PlayerView.swift */,
+				393C9BCF302D03FB00156261 /* PlayerViewMac.swift */,
 				39B0DFF52B1819EF008CCF36 /* Music.storyboard */,
 				397C56271B7538A5007A67F0 /* DemoAlbumTableViewController.swift */,
 				39837A231B758541004D2DA9 /* DemoMusicPlayerController.swift */,
+				3987A4C12E86E42D0090E273 /* DemoMusicSearchController.swift */,
 				397C56291B753A45007A67F0 /* MusicCell.swift */,
-				39837A251B759721004D2DA9 /* PortraitTabBarController.swift */,
+				39837A251B759721004D2DA9 /* MusicTabBarController.swift */,
 			);
 			name = "Demo - Music Scene (Swift)";
 			path = MusicScene;
@@ -374,6 +408,16 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		39F031AE2E8FC0420079F2FD /* Demo - Custom Container */ = {
+			isa = PBXGroup;
+			children = (
+				39F031AF2E8FC0DD0079F2FD /* CustomContainer.storyboard */,
+				39F031B22E8FC2770079F2FD /* CustomContainerController.swift */,
+			);
+			name = "Demo - Custom Container";
+			path = CustomContainer;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -389,16 +433,20 @@
 			buildRules = (
 			);
 			dependencies = (
-				39114EDB26E2BF8B004FC75B /* PBXTargetDependency */,
+				39A8CA2530845B9C008EC6F6 /* PBXTargetDependency */,
+				39C3E089300AA37C00D2288A /* PBXTargetDependency */,
 				39114EDD26E2BF8B004FC75B /* PBXTargetDependency */,
 				39114EDF26E2BF8B004FC75B /* PBXTargetDependency */,
-				39DB61831B8891EE001BFF8F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				39C3E184300AB2F700D2288A /* Catalyst */,
 			);
 			name = LNPopupControllerExample;
 			packageProductDependencies = (
 				3980E7FB26DEBCAF00AC0728 /* LoremIpsum */,
 				39D6C8B22B2D01E600F53E70 /* LNTouchVisualizer */,
 				39BF83D22B554AE800917649 /* LNPreviewToContextMenu */,
+				39A8CA2630845BA9008EC6F6 /* SwiftUIIntrospect */,
 			);
 			productName = LNPopupControllerExample;
 			productReference = 39277A041B58228000293F95 /* LNPopupControllerExample.app */;
@@ -416,6 +464,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				39C3E184300AB2F700D2288A /* Catalyst */,
 			);
 			name = LNPopupControllerExampleNoPopup;
 			packageProductDependencies = (
@@ -456,6 +507,7 @@
 				3980E7FA26DEBCAF00AC0728 /* XCRemoteSwiftPackageReference "LoremIpsum" */,
 				39114ED726E2BF7A004FC75B /* XCRemoteSwiftPackageReference "LNPreviewToContextMenu" */,
 				39D6C8B12B2D01E600F53E70 /* XCRemoteSwiftPackageReference "LNTouchVisualizer" */,
+				39A8CA2330845B5D008EC6F6 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
 			);
 			productRefGroup = 39277A051B58228000293F95 /* Products */;
 			projectDirPath = "";
@@ -490,11 +542,13 @@
 			files = (
 				39B0DFF22B1819EF008CCF36 /* Music.storyboard in Resources */,
 				39B0DFEE2B1819C2008CCF36 /* ManualLayoutScene.storyboard in Resources */,
+				39A8BE90300B4358001B1E10 /* LNPopupController.icon in Resources */,
 				39B0DFE62B1819A9008CCF36 /* MapScene.storyboard in Resources */,
 				39B0DFEA2B1819BC008CCF36 /* Settings.storyboard in Resources */,
 				392E2AC52AD5CAB600944CB2 /* LaunchScreen.storyboard in Resources */,
 				39277A171B58228000293F95 /* Assets.xcassets in Resources */,
 				39277A151B58228000293F95 /* Main.storyboard in Resources */,
+				39F031B02E8FC0DD0079F2FD /* CustomContainer.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -507,7 +561,9 @@
 				39B0DFE72B1819A9008CCF36 /* MapScene.storyboard in Resources */,
 				39B0DFEB2B1819BC008CCF36 /* Settings.storyboard in Resources */,
 				39FAFC4F24E71A6C008BBC2D /* Assets.xcassets in Resources */,
+				39F031B12E8FC0DD0079F2FD /* CustomContainer.storyboard in Resources */,
 				39FAFC5024E71A6C008BBC2D /* Main.storyboard in Resources */,
+				39A8BE91300B4358001B1E10 /* LNPopupController.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -519,14 +575,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				39BBA86924FEC32F00D9712A /* ManualLayoutCustomBarViewController.swift in Sources */,
+				3987A4C22E86E42D0090E273 /* DemoMusicSearchController.swift in Sources */,
 				39756327254ED9EB0066981E /* DemoGallery.m in Sources */,
 				397C56281B7538A5007A67F0 /* DemoAlbumTableViewController.swift in Sources */,
 				39837A241B758541004D2DA9 /* DemoMusicPlayerController.swift in Sources */,
 				39988C762AA1557F00C3BB04 /* SafeSystemImages.m in Sources */,
 				393F23271E16C192000E969D /* CustomMapBarViewController.swift in Sources */,
+				393C9BD1302D03FB00156261 /* PlayerViewMac.swift in Sources */,
+				39201CAA3071B67900E84F51 /* PopupArrangementViewController.swift in Sources */,
 				39A3B58B230D400B00E10425 /* LNSplitViewController.m in Sources */,
+				39F031B42E8FC2770079F2FD /* CustomContainerController.swift in Sources */,
 				39277A0C1B58228000293F95 /* AppDelegate.m in Sources */,
 				39B645F02CA61B0200AB038B /* ScrollingMapViewController.swift in Sources */,
+				39F5ACD52EA583F8002EF1E6 /* PlayerView.swift in Sources */,
 				394E1AA7276C014900C5BE31 /* LNPopupDemoContextMenuInteraction.m in Sources */,
 				39277A091B58228000293F95 /* main.m in Sources */,
 				39D6C8BB2B2D02B500F53E70 /* SettingKeys.m in Sources */,
@@ -541,7 +602,7 @@
 				399748721D5652250079492B /* DemoPopupContentViewController.m in Sources */,
 				3988E3581B59C3000039C09B /* DemoViewController.m in Sources */,
 				39C4026E2CA4ED9F00F1C743 /* ScrollingColorsViewController.swift in Sources */,
-				39837A261B759721004D2DA9 /* PortraitTabBarController.swift in Sources */,
+				39837A261B759721004D2DA9 /* MusicTabBarController.swift in Sources */,
 				39631FAD230DA03E0059D119 /* SceneDelegate.m in Sources */,
 				397C562A1B753A45007A67F0 /* MusicCell.swift in Sources */,
 			);
@@ -559,8 +620,11 @@
 				39FAFC3724E71A6C008BBC2D /* DemoAlbumTableViewController.swift in Sources */,
 				39FAFC3824E71A6C008BBC2D /* DemoMusicPlayerController.swift in Sources */,
 				39FAFC3924E71A6C008BBC2D /* CustomMapBarViewController.swift in Sources */,
+				39201CA93071B67900E84F51 /* PopupArrangementViewController.swift in Sources */,
 				39FAFC3B24E71A6C008BBC2D /* LNSplitViewController.m in Sources */,
 				39FAFC3C24E71A6C008BBC2D /* AppDelegate.m in Sources */,
+				39F031B32E8FC2770079F2FD /* CustomContainerController.swift in Sources */,
+				3987A4C32E86E42D0090E273 /* DemoMusicSearchController.swift in Sources */,
 				39FAFC3E24E71A6C008BBC2D /* main.m in Sources */,
 				39FAFC3F24E71A6C008BBC2D /* RandomColors.m in Sources */,
 				39FAFC4024E71A6C008BBC2D /* LocationsController.swift in Sources */,
@@ -569,7 +633,9 @@
 				39FAFC4324E71A6C008BBC2D /* DemoViewController.m in Sources */,
 				39D6C8BC2B2D02B500F53E70 /* SettingKeys.m in Sources */,
 				39B645EE2CA5AA1300AB038B /* PageCardViewController.swift in Sources */,
-				39FAFC4424E71A6C008BBC2D /* PortraitTabBarController.swift in Sources */,
+				39FAFC4424E71A6C008BBC2D /* MusicTabBarController.swift in Sources */,
+				39F5ACD62EA583F8002EF1E6 /* PlayerView.swift in Sources */,
+				393C9BD0302D03FB00156261 /* PlayerViewMac.swift in Sources */,
 				39B645F12CA61B0200AB038B /* ScrollingMapViewController.swift in Sources */,
 				39988C772AA1557F00C3BB04 /* SafeSystemImages.m in Sources */,
 				39FAFC4524E71A6C008BBC2D /* SceneDelegate.m in Sources */,
@@ -580,22 +646,23 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		39114EDB26E2BF8B004FC75B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 39114EDA26E2BF8B004FC75B /* LoremIpsum */;
-		};
 		39114EDD26E2BF8B004FC75B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 39114EDC26E2BF8B004FC75B /* LNTouchVisualizer */;
 		};
 		39114EDF26E2BF8B004FC75B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			productRef = 39114EDE26E2BF8B004FC75B /* LNPreviewToContextMenu */;
 		};
-		39DB61831B8891EE001BFF8F /* PBXTargetDependency */ = {
+		39A8CA2530845B9C008EC6F6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 39A8CA2430845B9C008EC6F6 /* SwiftUIIntrospect */;
+		};
+		39C3E089300AA37C00D2288A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = LNPopupController;
-			targetProxy = 39DB61821B8891EE001BFF8F /* PBXContainerItemProxy */;
+			targetProxy = 39C3E088300AA37C00D2288A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -751,7 +818,7 @@
 		39277A1F1B58228000293F95 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = LNPopupController;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -760,13 +827,16 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = S9QFG2VH2E;
+				DOCC_EXTRACT_OBJC_INFO_FOR_SWIFT_SYMBOLS = YES;
+				DOCC_EXTRACT_SWIFT_INFO_FOR_OBJC_SYMBOLS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"LNPOPUP=1",
 					"DEBUG=1",
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = LNPopupControllerExample/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -780,14 +850,14 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "LNPopupControllerExample/Supporting/LNPopupControllerExample-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Debug;
 		};
 		39277A201B58228000293F95 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = LNPopupController;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -797,9 +867,12 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = S9QFG2VH2E;
+				DOCC_EXTRACT_OBJC_INFO_FOR_SWIFT_SYMBOLS = YES;
+				DOCC_EXTRACT_SWIFT_INFO_FOR_OBJC_SYMBOLS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = "LNPOPUP=1";
 				INFOPLIST_FILE = LNPopupControllerExample/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -815,14 +888,14 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "LNPopupControllerExample/Supporting/LNPopupControllerExample-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Release;
 		};
 		39FAFC5524E71A6C008BBC2D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = LNPopupController;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -835,6 +908,7 @@
 				DEVELOPMENT_TEAM = S9QFG2VH2E;
 				INFOPLIST_FILE = "LNPopupControllerExample/LNPopupControllerExampleNoPopup-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -848,14 +922,14 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "LNPopupControllerExample/Supporting/LNPopupControllerExample-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Debug;
 		};
 		39FAFC5624E71A6C008BBC2D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = LNPopupController;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -868,6 +942,7 @@
 				DEVELOPMENT_TEAM = S9QFG2VH2E;
 				INFOPLIST_FILE = "LNPopupControllerExample/LNPopupControllerExampleNoPopup-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -882,7 +957,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "LNPopupControllerExample/Supporting/LNPopupControllerExample-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,6";
 			};
 			name = Release;
 		};
@@ -943,6 +1018,14 @@
 				kind = branch;
 			};
 		};
+		39A8CA2330845B5D008EC6F6 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/siteline/SwiftUI-Introspect";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 27.1.0;
+			};
+		};
 		39D6C8B12B2D01E600F53E70 /* XCRemoteSwiftPackageReference "LNTouchVisualizer" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/LeoNatan/LNTouchVisualizer.git";
@@ -962,11 +1045,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		39114EDA26E2BF8B004FC75B /* LoremIpsum */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3980E7FA26DEBCAF00AC0728 /* XCRemoteSwiftPackageReference "LoremIpsum" */;
-			productName = LoremIpsum;
-		};
 		39114EDC26E2BF8B004FC75B /* LNTouchVisualizer */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 39114EC826E2B0D9004FC75B /* XCRemoteSwiftPackageReference "LNTouchVisualizer" */;
@@ -981,6 +1059,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 3980E7FA26DEBCAF00AC0728 /* XCRemoteSwiftPackageReference "LoremIpsum" */;
 			productName = LoremIpsum;
+		};
+		39A8CA2430845B9C008EC6F6 /* SwiftUIIntrospect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39A8CA2330845B5D008EC6F6 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */;
+			productName = SwiftUIIntrospect;
+		};
+		39A8CA2630845BA9008EC6F6 /* SwiftUIIntrospect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39A8CA2330845B5D008EC6F6 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */;
+			productName = SwiftUIIntrospect;
 		};
 		39BF83D22B554AE800917649 /* LNPreviewToContextMenu */ = {
 			isa = XCSwiftPackageProductDependency;

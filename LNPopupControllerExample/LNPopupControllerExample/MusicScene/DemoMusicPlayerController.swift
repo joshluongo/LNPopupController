@@ -10,149 +10,24 @@
 import UIKit
 import SwiftUI
 import LNPopupController
+import ObjectiveC
 
-fileprivate struct BackgroundView: UIViewRepresentable {
-	func makeUIView(context: Context) -> UIView {
-		let rv = UIView()
-		rv.tag = 666
-		return rv
-	}
-	func updateUIView(_ uiView: UIView, context: Context) {
-	}
+#if targetEnvironment(macCatalyst)
+@_cdecl("LNDemoMusicPlayerController") public
+func _DemoMusicPlayerController() -> UIViewController {
+	DemoMusicPlayerController<PlayerViewMac>()
+}
+#endif
+
+protocol MusicPlayerController: AnyObject {
+	var nextSong: ((LNPopupItem) -> Bool)? { get set }
+	var prevSong: ((LNPopupItem) -> Void)? { get set }
+	
+	func play()
 }
 
-fileprivate struct PopupTransitionImage: UIViewRepresentable {
-	let uiImage: UIImage
-	
-	func makeUIView(context: Context) -> LNPopupImageView {
-		let rv = LNPopupImageView()
-		rv.image = uiImage
-		rv.cornerRadius = 30.0
-		
-		let shadow = NSShadow()
-		shadow.shadowOffset = .zero
-		shadow.shadowColor = UIColor.black.withAlphaComponent(0.5)
-		shadow.shadowBlurRadius = 10.0
-		rv.shadow = shadow
-
-		return rv
-	}
-	
-	func updateUIView(_ uiView: LNPopupImageView, context: Context) {
-		uiView.image = uiImage
-	}
-}
-
-class PlaybackSettings: ObservableObject {
-	@Published var songTitle: String = ""
-	@Published var albumTitle: String = ""
-	@Published var albumArt: UIImage = UIImage()
-	
-	@Published var playbackProgress: Float = 0.0
-	@Published var progressEditedByUser: Bool = false
-	@Published var volume: Float = 0.5
-	@Published var isPlaying: Bool = true
-	
-	var onPlayPause: (() -> ())? = nil
-}
-
-struct PlayerView: View {
-	@ObservedObject var playbackSettings = PlaybackSettings()
-	
-	var body: some View {
-		GeometryReader { geometry in
-			return VStack {
-				PopupTransitionImage(uiImage: playbackSettings.albumArt)
-					.aspectRatio(1.0, contentMode: .fit)
-					.padding([.leading, .trailing], 10)
-					.padding([.top], geometry.size.height * 60 / 896.0)
-				VStack(spacing: geometry.size.height * 30.0 / 896.0) {
-					HStack {
-						VStack(alignment: .leading) {
-							Text(playbackSettings.songTitle)
-								.font(.system(size: 20, weight: .bold))
-							Text(playbackSettings.albumTitle)
-								.font(.system(size: 20, weight: .regular))
-						}
-						.lineLimit(1)
-						.frame(minWidth: 0,
-							   maxWidth: .infinity,
-							   alignment: .topLeading)
-						Button(action: {}, label: {
-							Image(systemName: "ellipsis.circle")
-								.font(.title)
-						})
-					}
-					Slider(value: $playbackSettings.playbackProgress, onEditingChanged: { editing in
-						playbackSettings.progressEditedByUser = editing
-					})
-					.padding([.bottom], geometry.size.height * 30.0 / 896.0)
-					HStack {
-						Button(action: {}, label: {
-							Image(systemName: "backward.fill")
-						})
-						.frame(minWidth: 0, maxWidth: .infinity)
-						Button(action: {
-							playbackSettings.isPlaying.toggle()
-							playbackSettings.onPlayPause?()
-						}, label: {
-							Image(systemName: playbackSettings.isPlaying ? "pause.fill" : "play.fill")
-						})
-						.font(.system(size: 50, weight: .bold))
-						.frame(minWidth: 0, maxWidth: .infinity, minHeight: 50, maxHeight: 50)
-						Button(action: {}, label: {
-							Image(systemName: "forward.fill")
-						})
-						.frame(minWidth: 0, maxWidth: .infinity)
-					}
-					.font(.system(size: 30, weight: .regular))
-					.padding([.bottom], geometry.size.height * 20.0 / 896.0)
-					HStack {
-						Image(systemName: "speaker.fill")
-						Slider(value: $playbackSettings.volume)
-						Image(systemName: "speaker.wave.2.fill")
-					}
-					.font(.footnote)
-					.foregroundColor(.gray)
-					HStack {
-						Button(action: {}, label: {
-							Image(systemName: "shuffle")
-						})
-						.frame(minWidth: 0, maxWidth: .infinity)
-						Button(action: {}, label: {
-							Image(systemName: "airplayaudio")
-						})
-						.frame(minWidth: 0, maxWidth: .infinity)
-						Button(action: {}, label: {
-							Image(systemName: "repeat")
-						})
-						.frame(minWidth: 0, maxWidth: .infinity)
-					}
-					.font(.body)
-				}
-				.padding(geometry.size.height * 40.0 / 896.0)
-			}
-			.frame(minWidth: 0,
-				   maxWidth: .infinity,
-				   minHeight: 0,
-				   maxHeight: .infinity,
-				   alignment: .top)
-			.background {
-				ZStack {
-					ZStack {
-						Image(uiImage: playbackSettings.albumArt)
-							.resizable()
-						Color(uiColor: .systemBackground)
-							.opacity(0.4)
-					}.compositingGroup().blur(radius: 90, opaque: true)
-					BackgroundView()
-				}.edgesIgnoringSafeArea(.all)
-			}
-		}
-	}
-}
-
-class DemoMusicPlayerController: UIHostingController<PlayerView> {
+@available(iOS 18.0, *)
+class DemoMusicPlayerController<PlatformPlayerView: View & PlaybackStateContainer>: UIHostingController<PlatformPlayerView>, MusicPlayerController {
 	let accessibilityDateComponentsFormatter = DateComponentsFormatter()
 	var timer : Timer?
 	var popupCloseButton: LNPopupCloseButton?
@@ -163,96 +38,102 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 		rv.translatesAutoresizingMaskIntoConstraints = false
 		background.addSubview(rv)
 		NSLayoutConstraint.activate([
-			rv.leadingAnchor.constraint(equalTo: background.safeAreaLayoutGuide.leadingAnchor),
-			rv.trailingAnchor.constraint(equalTo: background.safeAreaLayoutGuide.trailingAnchor),
-			rv.topAnchor.constraint(equalTo: background.safeAreaLayoutGuide.topAnchor),
-			rv.bottomAnchor.constraint(equalTo: background.safeAreaLayoutGuide.bottomAnchor)
+			rv.leadingAnchor.constraint(equalTo: background.leadingAnchor),
+			rv.trailingAnchor.constraint(equalTo: background.trailingAnchor),
+			rv.topAnchor.constraint(equalTo: background.topAnchor),
+			rv.bottomAnchor.constraint(equalTo: background.bottomAnchor)
 		])
 		
 		return rv
 	}()
 	
-	let playerView = PlayerView()
+	let playerView = PlatformPlayerView()
 	
+	@objc
 	required init() {
 		super.init(rootView: playerView)
 		
-		playerView.playbackSettings.onPlayPause = { [weak self] in
-			guard let self else {
-				return
-			}
-			
-			self.updateBarItems(with: self.traitCollection)
+		registerForTraitChanges([LNPopupBar.EnvironmentTrait.self]) { (self: Self, previousTraitCollection) in
+			self.reloadBarItems(with: self.traitCollection, animated: true)
 		}
 		
-		timer = Timer(timeInterval: 0.02, target: self, selector: #selector(DemoMusicPlayerController._timerTicked(_:)), userInfo: nil, repeats: true)
-		RunLoop.current.add(timer!, forMode: .common)
+		playerView.playbackState.onPrevSong = { [weak self] in
+			self?.goPrev()
+		}
+		
+		playerView.playbackState.onNextSong = { [weak self] in
+			self?.goNext()
+		}
+		
+		updateTimerFromPlayerView()
+		updateBarItemsFromPlayerView()
+		updateItemProgressFromPlayerView()
 		
 		accessibilityDateComponentsFormatter.unitsStyle = .spellOut
 	}
 	
-	fileprivate func updateBarItems(with traitCollection: UITraitCollection) {
-		let playPauseActionHandler: UIActionHandler = { [weak self] _ in
-			guard let self else {
-				return
+	func updateTimerFromPlayerView() {
+		withObservationTracking {
+			_ = playerView.playbackState.popupItem
+			if playerView.playbackState.isUserScrubbing || !playerView.playbackState.isPlaying {
+				stopTimer()
+			} else {
+				startTimer()
 			}
-			self.playerView.playbackSettings.isPlaying.toggle()
-			self.updateBarItems(with: self.traitCollection)
+		} onChange: { [weak self] in
+			Task { @MainActor in
+				self?.updateTimerFromPlayerView()
+			}
+		}
+	}
+	
+	func updateBarItemsFromPlayerView() {
+		withObservationTracking {
+			_ = playerView.playbackState.isPlaying
+			updateBarItems(with: traitCollection.popupBarEnvironment, animated: true)
+		} onChange: { [weak self] in
+			Task { @MainActor in
+				self?.updateBarItemsFromPlayerView()
+			}
+		}
+	}
+	
+	func updateItemProgressFromPlayerView() {
+		withObservationTracking {
+			let progress = playerView.playbackState.progress
+			popupItem.progress = popupItem.isEmptyPlaybackItem ? 0.0 : progress
+		} onChange: { [weak self] in
+			Task { @MainActor in
+				self?.updateItemProgressFromPlayerView()
+			}
+		}
+
+	}
+	
+	fileprivate func reloadBarItems(with traitCollection: UITraitCollection, animated: Bool = false) {
+		guard let popupBar = popupPresentationContainer?.popupBar else {
+			return
 		}
 		
-		let scale: LNSystemImageScale
-		let backForwardScale: LNSystemImageScale
-		if LNPopupBar.Style(rawValue: UserDefaults.settings.object(forKey: .barStyle) as? Int ?? 0)! == LNPopupBar.Style.compact {
-			scale = .compact
-			backForwardScale = .compact
-		} else if UIDevice.current.userInterfaceIdiom == .pad && traitCollection.horizontalSizeClass == .regular {
-			scale = .larger
-			backForwardScale = .large
-		} else {
-			scale = .normal
-			backForwardScale = .normal
-		}
+		LNPopupItemSetStandardMusicControls(popupItem, popupBar, popupItem.isEmptyPlaybackItem || !playerView.playbackState.isPlaying, animated, traitCollection, UIAction { [weak self] _ in
+			self?.goPrev()
+		}, UIAction { [weak self] _ in
+			self?.playerView.playbackState.isPlaying.toggle()
+		}, UIAction { [weak self] _ in
+			self?.goNext()
+		})
+		updateBarItems(with: traitCollection.popupBarEnvironment, animated: false)
+	}
+	
+	fileprivate func updateBarItems(with popupBarEnvironment: LNPopupBar.Environment, animated: Bool = false) {
+		popupItem.barButtonItems?.forEach { $0.isEnabled = !popupItem.isEmptyPlaybackItem }
 		
-		let play = LNSystemBarButtonItem("play.fill", scale: scale != .larger ? .init(rawValue: scale.rawValue + 1)! : scale, primaryAction: UIAction(handler: playPauseActionHandler))
-		play.accessibilityLabel = "Play"
-		play.accessibilityIdentifier = "PlayButton";
-		play.accessibilityTraits = .button
-		
-		let pause = LNSystemBarButtonItem("pause.fill", scale: scale != .larger ? .init(rawValue: scale.rawValue + 1)! : scale, primaryAction: UIAction(handler: playPauseActionHandler))
-		pause.accessibilityLabel = "Pause"
-		pause.accessibilityIdentifier = "PauseButton";
-		pause.accessibilityTraits = .button
-		
-		let playPause = playerView.playbackSettings.isPlaying ? pause : play
-		
-		let next = LNSystemBarButtonItem("forward.fill", scale: backForwardScale, target: nil, action: nil)
-		next.accessibilityLabel = "Next Track"
-		next.accessibilityIdentifier = "NextButton";
-		next.accessibilityTraits = .button
-		
-		let prev = LNSystemBarButtonItem("backward.fill", scale: backForwardScale, target: nil, action: nil)
-		prev.accessibilityLabel = "Previous Track"
-		prev.accessibilityIdentifier = "PrevButton";
-		prev.accessibilityTraits = .button
-		
-		let more = LNSystemBarButtonItem("ellipsis", scale: backForwardScale, target: nil, action: nil)
-		more.accessibilityLabel = "More"
-		more.accessibilityIdentifier = "MoreButton";
-		more.accessibilityTraits = .button
-		
-		if scale == .compact {
-			if traitCollection.horizontalSizeClass == .compact {
-				popupItem.leadingBarButtonItems = [playPause]
-				popupItem.trailingBarButtonItems = [more]
+		if let playPauseItem = popupItem.barButtonItems?.first(where: { $0.accessibilityIdentifier == "PlayPauseButton" }) {
+			let playPauseImage = UIImage(systemName: playerView.playbackState.isPlaying ? "pause.fill" : "play.fill")
+			if animated {
+				playPauseItem.setSymbolImage(playPauseImage.unsafelyUnwrapped, contentTransition: .replace)
 			} else {
-				popupItem.leadingBarButtonItems = [prev, playPause, next]
-				popupItem.trailingBarButtonItems = [more]
-			}
-		} else {
-			if traitCollection.horizontalSizeClass == .compact {
-				popupItem.barButtonItems = [playPause, next]
-			} else {
-				popupItem.barButtonItems = [prev, playPause, next]
+				playPauseItem.image = playPauseImage
 			}
 		}
 	}
@@ -260,46 +141,32 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 	override func viewDidMove(toPopupContainerContentView popupContentView: LNPopupContentView?) {
 		super.viewDidMove(toPopupContainerContentView: popupContentView)
 		
+#if targetEnvironment(macCatalyst)
+		popupContentView?.popupCloseButtonStyle = .clearGlass
+		popupContentView?.popupCloseButtonPositioning = .leading
+		popupContentView?.popupCloseButton.traitOverrides.userInterfaceStyle = .dark
+#else
+		popupContentView?.popupCloseButtonStyle = .grabber
+#endif
+		
 		if popupContentView == nil {
-			timer?.invalidate()
-			timer = nil
+			stopTimer()
 		}
 	}
 	
+#if !targetEnvironment(macCatalyst)
 	override func positionPopupCloseButton(_ popupCloseButton: LNPopupCloseButton) -> Bool {
-		#if targetEnvironment(macCatalyst)
-		return false
-		#else
 		self.popupCloseButton = popupCloseButton
 		self.view.setNeedsLayout()
 		return true
-		#endif
 	}
+#endif
 	
 	override func viewDidLoad() {
 		super.viewDidLoad()
-		
-		updateBarItems(with: traitCollection)
-	}
-	
-	override func viewWillAppear(_ animated: Bool) {
-		super.viewWillAppear(animated)
-		
-		UIView.performWithoutAnimation {
-			view.alpha = 0.0
-		}
-		
-		view.alpha = 1.0
-	}
-	
-	override func viewWillDisappear(_ animated: Bool) {
-		super.viewWillDisappear(animated)
-		
-		UIView.performWithoutAnimation {
-			view.alpha = 1.0
-		}
-		
-		view.alpha = 0.0
+
+		overrideUserInterfaceStyle = .dark
+		view.tintColor = .white
 	}
 	
 	override func viewDidLayoutSubviews() {
@@ -310,45 +177,71 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 			
 			popupCloseButton.translatesAutoresizingMaskIntoConstraints = false
 			
-			NSLayoutConstraint.activate([
-				popupCloseButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-				popupCloseButton.topAnchor.constraint(equalTo: vibrancyView.contentView.topAnchor, constant: 4),
-			])
+			let legacy = { [self] in
+				NSLayoutConstraint.activate([
+					popupCloseButton.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+					popupCloseButton.topAnchor.constraint(equalTo: vibrancyView.layoutMarginsGuide.topAnchor, constant: 4),
+				])
+			}
+			
+#if canImport(UIKit, _version: 9127.0.85)
+			if #available(iOS 27.2, *) {
+				NSLayoutConstraint.activate([
+					popupCloseButton.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+					popupCloseButton.topAnchor.constraint(equalTo: vibrancyView.layoutGuide(for: .bar(onEdge: UIRectEdge.top, extent: 0.0)).topAnchor, constant: 4),
+				])
+			} else {
+				legacy()
+			}
+#else
+			legacy()
+#endif
+		}
+	}
+	
+	override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+		super.viewWillTransition(to: size, with: coordinator)
+		
+		coordinator.animate { context in
+			self.reloadBarItems(with: self.traitCollection, animated: context.isAnimated)
 		}
 	}
 	
 	override func willTransition(to newCollection: UITraitCollection, with coordinator: any UIViewControllerTransitionCoordinator) {
 		super.willTransition(to: newCollection, with: coordinator)
 		
-		updateBarItems(with: newCollection)
-	}
-	
-	var songTitle: String = "" {
-		didSet {
-			popupItem.title = songTitle
-			playerView.playbackSettings.songTitle = songTitle
-		}
-	}
-	
-	var albumTitle: String = "" {
-		didSet {
-			if LNPopupBar.Style(rawValue: UserDefaults.settings.object(forKey: .barStyle) as? Int ?? 0)! == .compact {
-				popupItem.subtitle = albumTitle
+		if traitCollection.horizontalSizeClass != newCollection.horizontalSizeClass {
+			coordinator.animate { context in
+				self.reloadBarItems(with: newCollection, animated: context.isAnimated)
 			}
-			playerView.playbackSettings.albumTitle = albumTitle
 		}
 	}
-
-	var albumArt: UIImage = UIImage() {
-		didSet {
-			playerView.playbackSettings.albumArt = albumArt
-			popupItem.image = albumArt
-			popupItem.accessibilityImageLabel = NSLocalizedString("Album Art", comment: "")
+	
+	override func popupItemDidChange(_ previousPopupItem: LNPopupItem?) {
+		playerView.playbackState.popupItem = popupItem.isEmptyPlaybackItem ? nil : popupItem
+		playerView.playbackState.progress = 0.0
+		if popupItem.isEmptyPlaybackItem {
+			playerView.playbackState.isPlaying = false
 		}
+		reloadBarItems(with: traitCollection, animated: false)
 	}
 	
 	@objc required dynamic init?(coder aDecoder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
+	}
+	
+	func startTimer() {
+		stopTimer()
+		
+		timer = Timer(timeInterval: 0.02, target: self, selector: #selector(DemoMusicPlayerController._timerTicked(_:)), userInfo: nil, repeats: true)
+		RunLoop.current.add(timer!, forMode: .common)
+	}
+	
+	func stopTimer() {
+		if let timer {
+			timer.invalidate()
+		}
+		timer = nil
 	}
 	
 	@objc func _timerTicked(_ timer: Timer) {
@@ -358,18 +251,33 @@ class DemoMusicPlayerController: UIHostingController<PlayerView> {
 			popupItem.accessibilityProgressValue = "\(accessibilityDateComponentsFormatter.string(from: TimeInterval(popupItem.progress) * totalTime)!) \(NSLocalizedString("of", comment: "")) \(accessibilityDateComponentsFormatter.string(from: totalTime)!)"
 		}
 		
-		guard playerView.playbackSettings.isPlaying && playerView.playbackSettings.progressEditedByUser == false else {
-			return
-		}
+		playerView.playbackState.progress += 0.001
 		
-		playerView.playbackSettings.playbackProgress += 0.001
-		popupItem.progress = playerView.playbackSettings.playbackProgress
-		
-		if popupItem.progress >= 1.0 {
-			timer.invalidate()
-			popupPresentationContainer?.dismissPopupBar(animated: true, completion: nil)
+		if playerView.playbackState.progress >= 1.0 {
+			stopTimer()
+			goNext()
 		}
 	}
+	
+	func goNext() {
+		if nextSong == nil || nextSong?(popupItem) == false {
+			popupPresentationContainer?.popupBar.dataSource = nil
+			popupPresentationContainer?.popupBar.popupItem = .emptyPlayback
+		}
+	}
+	
+	func goPrev() {
+		prevSong?(popupItem)
+	}
+	
+	func play() {
+		playerView.playbackState.progress = 0.0
+		playerView.playbackState.isPlaying = true
+		updateBarItems(with: self.traitCollection.popupBarEnvironment, animated: true)
+	}
+	
+	var nextSong: ((LNPopupItem) -> Bool)? = nil
+	var prevSong: ((LNPopupItem) -> Void)? = nil
 }
 
 #endif
